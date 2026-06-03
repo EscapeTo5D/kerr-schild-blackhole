@@ -1,0 +1,20 @@
+# Python
+__pycache__/
+*.py[cod]
+*.egg-info/
+.venv/
+venv/
+
+# IDE
+.idea/
+.vscode/
+
+# Taichi offline cache
+.cache/
+
+# Generated render outputs (keep preview/ which is committed)
+/frames_ks/
+/interstellar_ks.mp4
+/interstellar_ks_4k.png
+/interstellar_ks_shot.png
+*.tmp
