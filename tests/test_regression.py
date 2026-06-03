@@ -36,8 +36,24 @@ def _probe_subprocess(sets):
             os.unlink(tmp.name)
 
 
-def test_disk_warp_changes_output():
+def test_disk_warp_and_shear_changes_output():
     base = np.load(BASELINE)
     img = _probe_subprocess(["DISK_WARP=0.8", "DISK_SHEAR=1.2"])
     diff = np.abs(img - base)
     assert diff.max() > 0.02, f"湍流旋钮未生效，max diff 仅 {diff.max():.4g}"
+
+
+def test_disk_filament_changes_output():
+    base = np.load(BASELINE)
+    img = _probe_subprocess(["DISK_FILAMENT=2.5"])
+    diff = np.abs(img - base)
+    assert diff.max() > 0.02, f"各向异性未生效，max diff 仅 {diff.max():.4g}"
+
+
+def test_disk_octave_boost_changes_output():
+    base = np.load(BASELINE)
+    # 注意：派生量 DISK_OCTAVE_BOOST_EFF 在 config import 时定值，需直接覆盖它
+    # （覆盖 DISK_OCTAVE_BOOST 不会重算 _EFF）。_apply 会写到 shading 模块。
+    img = _probe_subprocess(["DISK_OCTAVE_BOOST_EFF=1"])
+    diff = np.abs(img - base)
+    assert diff.max() > 0.02, f"额外 octave 未生效，max diff 仅 {diff.max():.4g}"

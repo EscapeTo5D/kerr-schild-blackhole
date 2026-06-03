@@ -129,12 +129,14 @@ def gas_disc_sample(pos: vec3, ds: ti.f32, tparam: ti.f32) -> vec4:
             ang = ti.atan2(y, x)          # 切口在 -x（黑洞背后），避开正前方那条接缝
             rcx = (dc * 1.5 + 0.55) * 0.95
             # 方位各向异性：DISK_FILAMENT>1 时沿切向拉长结构（除以比值=降方位频率）。=1 时恒等
-            rcy = (ang * 1.5) * 0.95 / DISK_FILAMENT
+            rcy = (ang * 1.5) * 0.95 / ti.max(DISK_FILAMENT, 1e-3)
             rcz = (dd * 1.5) * 0.95
             # 较差自转：内快外慢的相位增量。DISK_SHEAR=0 时退化为原版均匀 sft
+            # 指数 1.5 ≈ 开普勒 Ω∝r^(-3/2)；shear 在 rho=DISK_RIN 处为 0（内缘不加速），外缘趋近 -1
             shear = (DISK_RIN / ti.max(rho_cyl, DISK_RIN)) ** 1.5 - 1.0
             sft = tparam * TIME_SPEED * (1.0 + DISK_SHEAR * shear)
             # 域扭曲：低频噪声向量扰动采样坐标。DISK_WARP=0 时 w=0，恒等
+            # *0.5=低频（扭曲旋涡比湍流大 2 倍）；两组奇数偏移使 xyz 三通道去相关
             base = vec3(rcx, rcy, rcz)
             w = DISK_WARP * vec3(noise3(base * 0.5),
                                  noise3(base * 0.5 + vec3(11.0, 17.0, 23.0)),
@@ -155,6 +157,7 @@ def gas_disc_sample(pos: vec3, ds: ti.f32, tparam: ti.f32) -> vec4:
             dust *= n1 * 0.998 + 0.002
             cov0 *= n2
             if ti.static(ORGANIC_ON == 1):
+                # 注：rcy 在 DISK_FILAMENT!=1 时已被各向异性缩放，organic 的 uvo 同步拉伸（同向一致，预期行为）
                 uvo = vec2((rcy + tparam * TIME_SPEED * 0.5) * 0.15, rcx * 0.27)
                 org = sample_organic(uvo)
                 dust *= ti.pow(org, vec3(2.0, 2.0, 2.0)) * 4.0 * DUST_BRIGHT
