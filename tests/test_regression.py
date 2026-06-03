@@ -34,3 +34,10 @@ def _probe_subprocess(sets):
     finally:
         if os.path.exists(tmp.name):
             os.unlink(tmp.name)
+
+
+def test_disk_warp_changes_output():
+    base = np.load(BASELINE)
+    img = _probe_subprocess(["DISK_WARP=0.8", "DISK_SHEAR=1.2"])
+    diff = np.abs(img - base)
+    assert diff.max() > 0.02, f"湍流旋钮未生效，max diff 仅 {diff.max():.4g}"

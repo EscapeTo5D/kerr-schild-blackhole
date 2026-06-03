@@ -8,6 +8,15 @@
     python tools/probe.py --out probe_warp.npy --set DISK_WARP=0.8 --set DISK_SHEAR=1.0
 """
 import argparse
+import os
+import sys
+
+# 以脚本方式运行时（python tools/probe.py），tools/ 目录被加入 sys.path；
+# 项目根（config 等模块所在目录）需手动插入。
+_ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+if _ROOT not in sys.path:
+    sys.path.insert(0, _ROOT)
+
 import numpy as np
 import taichi as ti
 

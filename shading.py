@@ -6,7 +6,8 @@ import taichi as ti
 
 from config import (vec2, vec3, vec4, NOISE_RES, ORGANIC_RES, SPIN,
                     DISK_RIN, DISK_ROUT, GLOW_FALLOFF, INNER_GLOW, DISK_TINT,
-                    DUST_BRIGHT, DUST_DENSITY, TIME_SPEED, HAZE_STRENGTH, ORGANIC_ON)
+                    DUST_BRIGHT, DUST_DENSITY, TIME_SPEED, HAZE_STRENGTH, ORGANIC_ON,
+                    DISK_WARP, DISK_SHEAR, DISK_FILAMENT, DISK_OCTAVE_BOOST_EFF)
 from common import lerp
 import fields
 
@@ -127,15 +128,27 @@ def gas_disc_sample(pos: vec3, ds: ti.f32, tparam: ti.f32) -> vec4:
         if cov0 >= 0.01:
             ang = ti.atan2(y, x)          # 切口在 -x（黑洞背后），避开正前方那条接缝
             rcx = (dc * 1.5 + 0.55) * 0.95
-            rcy = (ang * 1.5) * 0.95
+            # 方位各向异性：DISK_FILAMENT>1 时沿切向拉长结构（除以比值=降方位频率）。=1 时恒等
+            rcy = (ang * 1.5) * 0.95 / DISK_FILAMENT
             rcz = (dd * 1.5) * 0.95
-            sft = tparam * TIME_SPEED
-            pa = vec3(rcx, rcy + sft, rcz)
-            pb = vec3(rcx, rcy, rcz)
+            # 较差自转：内快外慢的相位增量。DISK_SHEAR=0 时退化为原版均匀 sft
+            shear = (DISK_RIN / ti.max(rho_cyl, DISK_RIN)) ** 1.5 - 1.0
+            sft = tparam * TIME_SPEED * (1.0 + DISK_SHEAR * shear)
+            # 域扭曲：低频噪声向量扰动采样坐标。DISK_WARP=0 时 w=0，恒等
+            base = vec3(rcx, rcy, rcz)
+            w = DISK_WARP * vec3(noise3(base * 0.5),
+                                 noise3(base * 0.5 + vec3(11.0, 17.0, 23.0)),
+                                 noise3(base * 0.5 + vec3(5.0, 9.0, 1.0)))
+            pa = vec3(rcx, rcy + sft, rcz) + w
+            pb = vec3(rcx, rcy, rcz) + w
             n1 = (noise3(pa * 3.0) * 0.5 + 0.5) * (noise3(pb * 6.0) * 0.5 + 0.5) \
                 * (noise3(pa * 12.0) * 0.5 + 0.5) * (noise3(pb * 24.0) * 0.5 + 0.5)
-            pc = vec3(rcx + 30.0, rcy + 30.0, rcz + 30.0)
-            pd = vec3(rcx + 30.0, rcy + 30.0 + sft, rcz + 30.0)
+            if ti.static(DISK_OCTAVE_BOOST_EFF >= 1):
+                n1 *= (noise3(pa * 48.0) * 0.5 + 0.5)
+            if ti.static(DISK_OCTAVE_BOOST_EFF >= 2):
+                n1 *= (noise3(pb * 96.0) * 0.5 + 0.5)
+            pc = vec3(rcx + 30.0, rcy + 30.0, rcz + 30.0) + w
+            pd = vec3(rcx + 30.0, rcy + 30.0 + sft, rcz + 30.0) + w
             n2 = 2.0 * (noise3(pc * 3.0) * 0.5 + 0.5) * (noise3(pd * 6.0) * 0.5 + 0.5) \
                 * (noise3(pc * 12.0) * 0.5 + 0.5) * (noise3(pd * 24.0) * 0.5 + 0.5) \
                 * (noise3(pc * 48.0) * 0.5 + 0.5) * (noise3(pd * 92.0) * 0.5 + 0.5)

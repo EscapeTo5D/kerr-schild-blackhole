@@ -63,6 +63,12 @@ DOPPLER_POWER = 2.0                # 多普勒指数：g²（柔和）/ g³（�
 DOPPLER_TILT = 1.0                 # 多普勒强度随相机仰角的 cos²θ 调制（借 canvas 版思路）：1=edge-on 满/face-on 无；0=不随仰角变（纯 POWER）。仅 DISK_DOPPLER=1 时生效
 TIME_SPEED = 0.06                  # 噪声沿方位随 t 旋进
 
+# ---- A 丝状湍流（默认全取原版值）----
+DISK_WARP = 0.0          # 域扭曲强度：低频噪声扰动采样坐标，造流体丝状旋涡。0=原版块状
+DISK_SHEAR = 0.0         # 较差自转剪切：噪声方位相位随 r 变化（内快外慢），丝拖成螺旋。0=均匀=原版
+DISK_FILAMENT = 1.0      # 方位各向异性拉伸比：沿切向拉长结构顺流线。1=各向同性=原版
+DISK_OCTAVE_BOOST = 0    # 离线额外高频 octave 数（0/1/2）。0=原版层数；GUI 档强制 0
+
 NOISE_RES = 256                    # iChannel0 噪声纹理 256²（双通道 R/G）
 ORGANIC_RES = 1024                 # iChannel1 尘埃色原生 1024²（Organic 1 原尺寸，不降采样）
 # organic 分支开关：由 ORGANIC_TEX_PATH 自动派生（被 ti.static 用作编译期常量）。
@@ -109,3 +115,6 @@ ANIM_VIDEO = _rel("interstellar_ks.mp4")   # 合成视频输出路径
 if INTERACTIVE:
     RES_X, RES_Y = GUI_RES_X, GUI_RES_Y
     SAMPLES = GUI_SAMPLES
+
+# A：离线才加额外 octave；GUI 实时档强制 0（编译期常量，被 ti.static 用）
+DISK_OCTAVE_BOOST_EFF = 0 if INTERACTIVE else DISK_OCTAVE_BOOST
