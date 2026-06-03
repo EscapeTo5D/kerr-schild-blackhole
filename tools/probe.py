@@ -48,12 +48,12 @@ def _apply(name, value):
 
 
 def render_probe(overrides=None):
+    # 注意：每个 Python 进程只应调用一次（fields.build 会重分配 field，
+    # Taichi runtime 已初始化后重复 build 不安全）。多组参数对比请走 _probe_subprocess（各自全新进程）。
     # 先降分辨率（务必在首次 render 编译前）
     for m in (config, fields, render):
         if hasattr(m, "RES_X"):
             m.RES_X, m.RES_Y = PROBE_RES
-        if hasattr(m, "SAMPLES"):
-            m.SAMPLES = 1
     if overrides:
         for k, v in overrides.items():
             _apply(k, v)

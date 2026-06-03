@@ -28,7 +28,9 @@ def _probe_subprocess(sets):
     cmd = [sys.executable, os.path.join("tools", "probe.py"), "--out", tmp.name]
     for s in sets:
         cmd += ["--set", s]
-    subprocess.run(cmd, cwd=ROOT, check=True)
-    img = np.load(tmp.name)
-    os.unlink(tmp.name)
-    return img
+    try:
+        subprocess.run(cmd, cwd=ROOT, check=True)
+        return np.load(tmp.name)
+    finally:
+        if os.path.exists(tmp.name):
+            os.unlink(tmp.name)
