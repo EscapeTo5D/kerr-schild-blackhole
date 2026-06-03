@@ -57,3 +57,17 @@ def test_disk_octave_boost_changes_output():
     img = _probe_subprocess(["DISK_OCTAVE_BOOST_EFF=1"])
     diff = np.abs(img - base)
     assert diff.max() > 0.02, f"额外 octave 未生效，max diff 仅 {diff.max():.4g}"
+
+
+def test_photon_ring_changes_output():
+    base = np.load(BASELINE)
+    img = _probe_subprocess(["PHOTONRING_ON=1", "PHOTONRING_STRENGTH=3.0"])
+    diff = np.abs(img - base)
+    assert diff.max() > 0.02, f"光子环未生效，max diff 仅 {diff.max():.4g}"
+
+
+def test_inner_layers_change_output():
+    base = np.load(BASELINE)
+    img = _probe_subprocess(["INNER_HALO=2.0", "INNER_VEIL=1.5"])
+    diff = np.abs(img - base)
+    assert diff.max() > 0.02, f"内缘分层未生效，max diff 仅 {diff.max():.4g}"

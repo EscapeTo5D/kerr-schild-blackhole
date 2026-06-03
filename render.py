@@ -7,7 +7,8 @@ import taichi as ti
 from config import (vec3, vec4, CAM_DIST, SPIN, RES_X, RES_Y, FOV_FACTOR, INT_STEP,
                     MAX_STEPS, DISK_ON, DISK_RIN, DISK_ROUT, DISK_HALF_Z, DISK_STEP,
                     R_SKY, DISK_DOPPLER, DOPPLER_POWER, DOPPLER_TILT, SAMPLES,
-                    CAMERA_PHI, CAMERA_THETA, TIME_OFFSET)
+                    CAMERA_PHI, CAMERA_THETA, TIME_OFFSET,
+                    PHOTONRING_ON, PHOTONRING_STRENGTH, PHOTONRING_WIDTH, PHOTONRING_TINT, PHOTONRING_RADIUS)
 import fields
 from geodesic import tetrad_basis, get_metric, transportStepRK45, rFromCoords
 from shading import gas_disc_sample, sky_color, haze_sample, disc_blueshift
@@ -52,6 +53,7 @@ def render(ang_phi: ti.f32, ang_theta: ti.f32, tparam: ti.f32, jx: ti.f32, jy: t
         alpha = 0.0
         h_step = INT_STEP
         last_pos = pos
+        r_min = R_SKY
         for step in range(MAX_STEPS):
             # 接近赤道盘时按高度分级限步
             rho_cyl = ti.sqrt(pos[1] * pos[1] + pos[2] * pos[2])
@@ -65,6 +67,7 @@ def render(ang_phi: ti.f32, ang_theta: ti.f32, tparam: ti.f32, jx: ti.f32, jy: t
             last_pos = pos
             pos, p, h_used, h_step = transportStepRK45(pos, p, h_step)
             r_curr = rFromCoords(pos)
+            r_min = ti.min(r_min, r_curr)
 
             if r_curr < rh + 0.05:                        # 落入视界 → 其后黑
                 break
@@ -90,6 +93,14 @@ def render(ang_phi: ti.f32, ang_theta: ti.f32, tparam: ti.f32, jx: ti.f32, jy: t
                 col += haze_sample(vec3(pos[1], pos[2], pos[3]), alpha, ds)
                 if alpha > 0.995:
                     break
+        if ti.static(PHOTONRING_ON == 1):
+            r_ph = PHOTONRING_RADIUS
+            if r_ph <= 0.0:
+                r_ph = 2.0 * (1.0 + ti.cos(2.0 / 3.0 * ti.acos(-SPIN)))  # 顺行赤道光子轨道半径
+            dr = (r_min - r_ph) / PHOTONRING_WIDTH
+            ring = ti.exp(-dr * dr) * PHOTONRING_STRENGTH
+            col += (1.0 - alpha) * ring * vec3(PHOTONRING_TINT[0],
+                                               PHOTONRING_TINT[1], PHOTONRING_TINT[2])
         fields.samp_acc[i, j] += col
 
 

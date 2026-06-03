@@ -7,7 +7,8 @@ import taichi as ti
 from config import (vec2, vec3, vec4, NOISE_RES, ORGANIC_RES, SPIN,
                     DISK_RIN, DISK_ROUT, GLOW_FALLOFF, INNER_GLOW, DISK_TINT,
                     DUST_BRIGHT, DUST_DENSITY, TIME_SPEED, HAZE_STRENGTH, ORGANIC_ON,
-                    DISK_WARP, DISK_SHEAR, DISK_FILAMENT, DISK_OCTAVE_BOOST_EFF)
+                    DISK_WARP, DISK_SHEAR, DISK_FILAMENT, DISK_OCTAVE_BOOST_EFF,
+                    INNER_HALO, INNER_VEIL)
 from common import lerp
 import fields
 
@@ -124,6 +125,9 @@ def gas_disc_sample(pos: vec3, ds: ti.f32, tparam: ti.f32) -> vec4:
         bcol *= lerp(vec3(1.7, 1.1, 1.0), vec3(0.5, 0.6, 1.0), rg * rg)
         bcol *= lerp(vec3(1.7, 0.5, 0.1), vec3(1.0, 1.0, 1.0), ti.sqrt(rg))
         dust = lerp(dust, bcol * 150.0 * INNER_GLOW, ti.min(ti.max(1.0 - cov0, 0.0), 1.0))
+        # 内缘分层：中晕（较宽径向权重）+ 宽幅泛光（更宽）。默认强度 0，恒等回归
+        dust += bcol * 30.0 * INNER_HALO * pcurve(rg, 2.0, 1.5)
+        dust += bcol * 8.0 * INNER_VEIL * pcurve(rg, 1.0, 2.0)
         cov0 = ti.min(ti.max(cov0 + bloom_f * bloom_f * 0.1, 0.0), 1.0)
         if cov0 >= 0.01:
             ang = ti.atan2(y, x)          # 切口在 -x（黑洞背后），避开正前方那条接缝

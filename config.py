@@ -57,6 +57,14 @@ DUST_BRIGHT = 1.0                  # 盘整体亮度额外增益（1.0=与原版
 GLOW_FALLOFF = 10.0                # 盘发射径向衰减锐度（dust_glow 分母）：越小外缘越亮、两翼延伸越远；290=原版
 DISK_TINT = (1.0, 0.78, 0.55)      # 盘发射色染色（红移/色温）：G、B 越低越红；(1,1,1)=不染色保持原版白
 INNER_GLOW = 1.0                   # 内缘强自发光（bcol×150）增益（1.0=原版 lstSRS）
+# ---- B 光子环 / 内缘分层（默认关闭/原版）----
+PHOTONRING_ON = 0            # 0=关（回归安全）；1=叠加刀锋光子环
+PHOTONRING_STRENGTH = 1.0    # 光子环亮度
+PHOTONRING_WIDTH = 0.15      # 光子环径向宽度（高斯 sigma，单位 M）
+PHOTONRING_TINT = (1.0, 0.9, 0.75)   # 光子环色染
+PHOTONRING_RADIUS = -1.0     # 光子球半径；<=0 则按 SPIN 自动算（顺行赤道光子轨道）
+INNER_HALO = 0.0             # 内缘中晕强度（0=原版无此层）
+INNER_VEIL = 0.0             # 内缘宽幅泛光强度（0=原版无此层）
 HAZE_STRENGTH = 1.0                # 内缘辉光（原版 Haze；1.0=原版 lstSRS；0=关）
 DISK_DOPPLER = 0                   # 原版 lstSRS 假弯曲无多普勒，故 0=与原版一致；1=加真实多普勒
 DOPPLER_POWER = 2.0                # 多普勒指数：g²（柔和）/ g³（原版更强）
