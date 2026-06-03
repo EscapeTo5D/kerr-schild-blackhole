@@ -46,12 +46,12 @@ def get_metric(pos: vec4) -> mat4:
 
 
 @ti.func
-def hamiltonianGradient(x: vec4, p: vec4) -> vec4:
-    """∂H/∂x 解析梯度（KS 形式）。"""
+def hamiltonianGradient(x: vec4, p: vec4,
+                        r: ti.f32, k1: ti.f32, k2: ti.f32, k3: ti.f32, f: ti.f32) -> vec4:
+    """∂H/∂x 解析梯度（KS 形式）。kerrScalars 结果由调用方传入，避免重复求解。"""
     a = SPIN
     x1, x2, x3 = x[1], x[2], x[3]
     pt, px, py, pz = p[0], p[1], p[2], p[3]
-    r, k1, k2, k3, f = kerrScalars(x)
     r2 = r * r
     a2 = a * a
     denom = r2 + a2
@@ -103,7 +103,7 @@ def geodesicRHS(x: vec4, p: vec4):
     pt, px, py, pz = p[0], p[1], p[2], p[3]
     lp = pt + k1 * px + k2 * py + k3 * pz
     dx = vec4(-pt, px, py, pz) - f * lp * vec4(1.0, k1, k2, k3)
-    dp = -hamiltonianGradient(x, p)
+    dp = -hamiltonianGradient(x, p, r, k1, k2, k3, f)
     return dx, dp
 
 
