@@ -94,9 +94,11 @@ def render(ang_phi: ti.f32, ang_theta: ti.f32, tparam: ti.f32, jx: ti.f32, jy: t
                 if alpha > 0.995:
                     break
         if ti.static(PHOTONRING_ON == 1):
-            r_ph = PHOTONRING_RADIUS
+            r_ph = PHOTONRING_RADIUS              # JIT 常量，编译时内联
             if r_ph <= 0.0:
-                r_ph = 2.0 * (1.0 + ti.cos(2.0 / 3.0 * ti.acos(-SPIN)))  # 顺行赤道光子轨道半径
+                # 顺行赤道光子球半径 r_ph = 2M[1+cos(2/3·arccos(-a/M))]（Bardeen 1972）
+                # a=0→3M，a=M→1M，SPIN=0.6→≈2.19M
+                r_ph = 2.0 * (1.0 + ti.cos(2.0 / 3.0 * ti.acos(-SPIN)))
             dr = (r_min - r_ph) / PHOTONRING_WIDTH
             ring = ti.exp(-dr * dr) * PHOTONRING_STRENGTH
             col += (1.0 - alpha) * ring * vec3(PHOTONRING_TINT[0],

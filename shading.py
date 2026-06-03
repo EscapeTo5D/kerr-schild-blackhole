@@ -125,7 +125,8 @@ def gas_disc_sample(pos: vec3, ds: ti.f32, tparam: ti.f32) -> vec4:
         bcol *= lerp(vec3(1.7, 1.1, 1.0), vec3(0.5, 0.6, 1.0), rg * rg)
         bcol *= lerp(vec3(1.7, 0.5, 0.1), vec3(1.0, 1.0, 1.0), ti.sqrt(rg))
         dust = lerp(dust, bcol * 150.0 * INNER_GLOW, ti.min(ti.max(1.0 - cov0, 0.0), 1.0))
-        # 内缘分层：中晕（较宽径向权重）+ 宽幅泛光（更宽）。默认强度 0，恒等回归
+        # 内缘分层：中晕（rg≈0.57 峰值）+ 宽幅泛光（rg≈0.33 峰值，更靠内缘）。默认强度 0，恒等回归
+        # 系数 30/8 为相对基础内缘辉光 INNER_GLOW(bcol×150) 的经验调谐幅度，随旋钮线性缩放
         dust += bcol * 30.0 * INNER_HALO * pcurve(rg, 2.0, 1.5)
         dust += bcol * 8.0 * INNER_VEIL * pcurve(rg, 1.0, 2.0)
         cov0 = ti.min(ti.max(cov0 + bloom_f * bloom_f * 0.1, 0.0), 1.0)
