@@ -15,7 +15,7 @@ from postprocess import k_clear, postprocess
 
 
 @ti.kernel
-def render(ang_phi: ti.f32, ang_theta: ti.f32, tparam: ti.f32, jx: ti.f32, jy: ti.f32):
+def render(ang_phi: ti.f32, ang_theta: ti.f32, tparam: ti.f32, jx: ti.f32, jy: ti.f32, fov: ti.f32):
     # 相机位置（= blackhole_core 的 KS 嵌入）
     xy_proj = ti.sqrt(CAM_DIST ** 2 + SPIN ** 2) * ti.cos(ang_theta)
     cam_x = xy_proj * ti.cos(ang_phi)
@@ -41,7 +41,7 @@ def render(ang_phi: ti.f32, ang_theta: ti.f32, tparam: ti.f32, jx: ti.f32, jy: t
     for i, j in fields.pixels:
         ux = (2.0 * (i + 0.5 + jx) - RES_X) / RES_X
         uy = (2.0 * (j + 0.5 + jy) - RES_Y) / RES_X
-        d_vec = vec3(-FOV_FACTOR, ux, uy).normalized()
+        d_vec = vec3(-fov, ux, uy).normalized()
         dir4D = -E0 + d_vec.x * E1 + d_vec.y * E2 + d_vec.z * E3
 
         pos = camPos
@@ -109,13 +109,13 @@ def _halton(idx, base):
     return r
 
 
-def render_frame(phi=CAMERA_PHI, theta=CAMERA_THETA, t=TIME_OFFSET, samples=None):
+def render_frame(phi=CAMERA_PHI, theta=CAMERA_THETA, t=TIME_OFFSET, samples=None, fov=FOV_FACTOR):
     n = SAMPLES if samples is None else samples
     k_clear(fields.samp_acc)
     for s in range(n):
         jx = _halton(s + 1, 2) - 0.5 if n > 1 else 0.0
         jy = _halton(s + 1, 3) - 0.5 if n > 1 else 0.0
-        render(phi, theta, t, jx, jy)
+        render(phi, theta, t, jx, jy, fov)
     k_avg_to_pixels(1.0 / n)
     postprocess()
     ti.sync()

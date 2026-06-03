@@ -11,6 +11,7 @@ import os
 
 from config import (SPIN, RES_X, RES_Y, SAMPLES, CAMERA_PHI, CAMERA_THETA, TIME_OFFSET,
                     OUT_PATH, NOISE_TEX_PATH, ORGANIC_TEX_PATH, INTERACTIVE, _rel,
+                    FOV_FACTOR, GUI_TIME_STEP, GUI_ZOOM_STEP,
                     ANIMATE, ANIM_FRAMES, ANIM_FPS, ANIM_CAM_TURNS, ANIM_DISK_TURN, ANIM_OUT_DIR,
                     ANIM_AUTO_MERGE, ANIM_VIDEO)
 import fields
@@ -72,20 +73,28 @@ def render_sequence():
 def run_interactive():
     gui = ti.GUI("Interstellar · Kerr-Schild", res=(RES_X, RES_Y))
     phi, theta, t = CAMERA_PHI, CAMERA_THETA, TIME_OFFSET
+    fov = FOV_FACTOR
     paused = False
     mouse_prev = None
-    print("← → 转方位 | ↑ ↓ 仰角 | 空格 暂停 | R 复位 | P 截图 | ESC 退出")
+    print("← → 转方位 | ↑ ↓ 仰角 | Ctrl+滚轮 缩放视角 | 空格 暂停 | R 复位 | P 截图 | ESC 退出")
     while gui.running:
-        for e in gui.get_events(ti.GUI.PRESS):
+        for e in gui.get_events(ti.GUI.PRESS, ti.GUI.WHEEL):
             if e.key == ti.GUI.ESCAPE:
                 gui.running = False
             elif e.key == ti.GUI.SPACE:
                 paused = not paused
             elif e.key == 'r':
-                phi, theta, t = CAMERA_PHI, CAMERA_THETA, TIME_OFFSET
+                phi, theta, t, fov = CAMERA_PHI, CAMERA_THETA, TIME_OFFSET, FOV_FACTOR
             elif e.key == 'p':
                 ti.tools.imwrite(fields.disp, _rel("interstellar_ks_shot.png"))
                 print("已截图: interstellar_ks_shot.png")
+            elif e.key == ti.GUI.WHEEL and gui.is_pressed(ti.GUI.CTRL):
+                # Ctrl+滚轮：上滚放大视角（FOV 变窄、像放大镜），下滚缩小；相机位置不动
+                if e.delta[1] > 0:
+                    fov *= GUI_ZOOM_STEP
+                elif e.delta[1] < 0:
+                    fov /= GUI_ZOOM_STEP
+                fov = min(max(fov, 0.3), 8.0)
         if gui.is_pressed(ti.GUI.LEFT):
             phi -= 0.03
         if gui.is_pressed(ti.GUI.RIGHT):
@@ -103,10 +112,11 @@ def run_interactive():
         else:
             mouse_prev = None
         if not paused:
-            t += 0.02
-        render_frame(phi, theta, t, samples=1)
+            t += GUI_TIME_STEP
+        render_frame(phi, theta, t, fov=fov)   # samples 默认走 config.SAMPLES（GUI 模式 = GUI_SAMPLES）
         gui.set_image(fields.disp)
-        gui.text(f"a={SPIN}  phi={phi:.2f} theta={theta:.2f}" + ("  [PAUSED]" if paused else ""),
+        gui.text(f"a={SPIN}  phi={phi:.2f} theta={theta:.2f} fov={fov:.2f}"
+                 + ("  [PAUSED]" if paused else ""),
                  pos=(0.02, 0.97), color=0xFFFFFF)
         gui.show()
 

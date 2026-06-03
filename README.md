@@ -40,7 +40,7 @@ Three mutually exclusive modes (set in `config.py`):
 |------|-------|--------|
 | **Static frame** | `INTERACTIVE = False`, `ANIMATE = False` | a single image at `OUT_PATH` |
 | **Animation** | `ANIMATE = True` | a frame sequence in `frames_ks/`, auto-muxed to `interstellar_ks.mp4` if `ANIM_AUTO_MERGE` |
-| **Interactive** | `INTERACTIVE = True` | a live window (arrow keys orbit, `Space` pause, `R` reset, `P` screenshot) |
+| **Interactive** | `INTERACTIVE = True` | a live window (arrow keys / drag to orbit, `Ctrl`+wheel to zoom, `Space` pause, `R` reset, `P` screenshot) |
 
 `INTERACTIVE` takes precedence over `ANIMATE`. For animation, drop the resolution/samples first (e.g. `1920×1080`, `SAMPLES = 2`) — 4K × many frames is slow.
 

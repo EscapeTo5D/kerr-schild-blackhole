@@ -25,11 +25,18 @@ vec4 = ti.types.vector(4, ti.f32)
 mat4 = ti.types.matrix(4, 4, ti.f32)
 
 # ============================ 运行配置（改这里，点 Run）============================
-RES_X, RES_Y = 3840, 2160            # 输出分辨率（4K 动画；出 8K 大图改回 8192,4320）
+RES_X, RES_Y = 3840, 2160            # 出图/视频分辨率（INTERACTIVE=False 时引擎用这个；4K，出 8K 大图改 8192,4320）
 OUT_PATH = _rel("interstellar_ks_4k.png")  # 输出文件名（写相对路径即锚定项目根）
-INTERACTIVE = False                 # True=实时窗口；False=出静帧
+INTERACTIVE = False               # True=实时 GUI 窗口（调参用）；False=出静帧/视频
 NOISE_TEX_PATH = _rel("assets/rgba_noise_medium.png")   # iChannel0 噪声图，None=白噪声
 ORGANIC_TEX_PATH = _rel("assets/organic1.jpg")          # iChannel1 尘埃色，None=暖色近似（同时关 organic 分支）
+
+# -------- GUI 交互调参专用（仅 INTERACTIVE=True 生效；改这里绝不影响上面的出图/视频参数）--------
+# GUI 用这套低配跑得动、跟手；调完把 INTERACTIVE 设回 False，出图/视频自动切回上面的高配。
+GUI_RES_X, GUI_RES_Y = 1280, 720     # 交互窗口分辨率（小=流畅）
+GUI_SAMPLES = 1                      # 交互每帧 TAA 采样（1=最快最跟手；2~4=更干净但更卡）
+GUI_TIME_STEP = 0.3                  # 交互每帧盘流动推进量（噪声相位/帧 = 本值×TIME_SPEED）；调大流得快、调小更平滑
+GUI_ZOOM_STEP = 1.1                  # Ctrl+滚轮每格的视角缩放倍率（>1）；1.1=每格放大/缩小 10%，越大越灵敏
 
 # ------------------------------------------------------------------ 物理 / 相机
 SPIN = 0.6                          # 黑洞自旋 a/M
@@ -95,3 +102,10 @@ ANIM_AUTO_MERGE = True             # 跑完自动调 ffmpeg 合成 mp4（需系�
 ANIM_VIDEO = _rel("interstellar_ks.mp4")   # 合成视频输出路径
 # 注意：动画务必降分辨率/采样，否则 8K×120 帧会跑到天荒地老。
 # 建议出动画时临时设 RES_X,RES_Y = 1920,1080 且 SAMPLES = 2~4。
+
+# ==================== 模式派生（计算项，不要在这里改参数）====================
+# GUI 模式下，用上面的 GUI 专用低配覆盖引擎实际使用的分辨率/采样；
+# 出图/视频模式（INTERACTIVE=False）保持原高配不变 —— 因此调 GUI_* 永远不会动到视频参数。
+if INTERACTIVE:
+    RES_X, RES_Y = GUI_RES_X, GUI_RES_Y
+    SAMPLES = GUI_SAMPLES
