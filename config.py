@@ -31,6 +31,15 @@ INTERACTIVE = False               # True=实时 GUI 窗口（调参用）；Fals
 NOISE_TEX_PATH = _rel("assets/rgba_noise_medium.png")   # iChannel0 噪声图，None=白噪声
 ORGANIC_TEX_PATH = _rel("assets/organic1.jpg")          # iChannel1 尘埃色，None=暖色近似（同时关 organic 分支）
 
+# ============================ 电影化预设（推荐值，默认不启用）============================
+# 下面所有增强旋钮默认都取「原版/关闭」值，开箱观感与原版逐像素一致（便于回归对比）。
+# 想要一轮完整的「电影化」观感，把下面这组推荐值填到各对应旋钮（保留 TONEMAP=0 的深黑招牌色调）：
+#   丝状湍流：   DISK_WARP=0.6  DISK_SHEAR=0.8  DISK_FILAMENT=1.6  DISK_OCTAVE_BOOST=1
+#   光子环/内缘： PHOTONRING_ON=1  PHOTONRING_STRENGTH=2.0  INNER_HALO=1.0  INNER_VEIL=0.6
+#   星图背景：   STARMAP_GAIN=1.8  STARMAP_PROC_MIX=0.25     （STARMAP_PATH 已默认指向 ESO 银河图）
+#   后期：       TONEMAP=0  ANAMORPHIC_ON=1  ANAMORPHIC_STRENGTH=0.8  VIGNETTE_STRENGTH=0.3
+# 逐项可调；想更狠把 DISK_*/PHOTONRING_STRENGTH/STARMAP_GAIN 调大。GUI 实时档会自动跳过额外 octave。
+
 # -------- GUI 交互调参专用（仅 INTERACTIVE=True 生效；改这里绝不影响上面的出图/视频参数）--------
 # GUI 用这套低配跑得动、跟手；调完把 INTERACTIVE 设回 False，出图/视频自动切回上面的高配。
 GUI_RES_X, GUI_RES_Y = 1280, 720     # 交互窗口分辨率（小=流畅）
