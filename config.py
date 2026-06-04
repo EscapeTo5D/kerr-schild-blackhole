@@ -36,6 +36,7 @@ ORGANIC_TEX_PATH = _rel("assets/organic1.jpg")          # iChannel1 尘埃色，
 # 想要一轮完整的「电影化」观感，把下面这组推荐值填到各对应旋钮（保留 TONEMAP=0 的深黑招牌色调）：
 #   丝状湍流：   DISK_WARP=0.6  DISK_SHEAR=0.8  DISK_FILAMENT=1.6  DISK_OCTAVE_BOOST=1
 #   光子环/内缘： PHOTONRING_ON=1  PHOTONRING_STRENGTH=2.0  INNER_HALO=1.0  INNER_VEIL=0.6
+#   白热盘体：   INNER_GLOW=3.0  WHITE_BASE_POW=2.0  WHITE_SIZE=0.001  （饱满白热 + 紧凑收束；原版=1.0/4.0/0.0）
 #   星图背景：   STARMAP_GAIN=1.8  STARMAP_PROC_MIX=0.25  STARMAP_FLIP=1  （FLIP=1 抵消 imread 翻转，银河北极朝上）
 #   后期：       TONEMAP=0  ANAMORPHIC_ON=1  ANAMORPHIC_STRENGTH=0.8  VIGNETTE_STRENGTH=0.3
 # 逐项可调；想更狠把 DISK_*/PHOTONRING_STRENGTH/STARMAP_GAIN 调大。GUI 实时档会自动跳过额外 octave。
@@ -52,7 +53,7 @@ SPIN = 0.6                          # 黑洞自旋 a/M
 CAM_DIST = 30.0                     # 相机半径
 CAMERA_THETA = 0.08                # 相机相对赤道面仰角（弧度）
 CAMERA_PHI = 0.0
-FOV_FACTOR = 1.2                   # 视野（越大越窄）
+FOV_FACTOR = 1.4                   # 视野（越大越窄）
 TIME_OFFSET = 0.2                  # 噪声初始相位
 
 # ------------------------------------------------------------------ 吸积盘（Buffer A 体积盘）
@@ -65,15 +66,18 @@ DUST_DENSITY = 80.0                # 单位路径长 coverage 增益（= 原版 
 DUST_BRIGHT = 1.0                  # 盘整体亮度额外增益（1.0=与原版一致；原版的 ×4 已在 organic 分支内）
 GLOW_FALLOFF = 10.0                # 盘发射径向衰减锐度（dust_glow 分母）：越小外缘越亮、两翼延伸越远；290=原版
 DISK_TINT = (1.0, 0.78, 0.55)      # 盘发射色染色（红移/色温）：G、B 越低越红；(1,1,1)=不染色保持原版白
-INNER_GLOW = 1.0                   # 内缘强自发光（bcol×150）增益（1.0=原版 lstSRS）
+INNER_GLOW = 3.0                   # 内缘强自发光（bcol×150）增益（1.0=原版 lstSRS）
+# 内缘白热亮度函数（解耦「亮度」与「尺寸」，见 shading.gas_disc_sample）：
+WHITE_BASE_POW = 2.0               # 白热径向衰减幂：4.0=原版细环（回归安全）；越小越饱满白热（2.0=whitebright 式）
+WHITE_SIZE = 0.001                 # 白热外缘截断墙系数：0.0=原版无截断（回归安全）；>0 截住白光半径（越大越紧），与 BASE_POW 解耦控亮/控大
 # ---- B 光子环 / 内缘分层（默认关闭/原版）----
-PHOTONRING_ON = 0            # 0=关（回归安全）；1=叠加刀锋光子环
+PHOTONRING_ON = 1            # 0=关（回归安全）；1=叠加刀锋光子环
 PHOTONRING_STRENGTH = 1.0    # 光子环亮度
 PHOTONRING_WIDTH = 0.15      # 光子环径向宽度（高斯 sigma，单位 M）
 PHOTONRING_TINT = (1.0, 0.9, 0.75)   # 光子环色染
 PHOTONRING_RADIUS = -1.0     # 光子球半径；<=0 则按 SPIN 自动算（顺行赤道光子轨道）
-INNER_HALO = 0.0             # 内缘中晕强度（0=原版无此层）
-INNER_VEIL = 0.0             # 内缘宽幅泛光强度（0=原版无此层）
+INNER_HALO = 1.0             # 内缘中晕强度（0=原版无此层）
+INNER_VEIL = 0.6             # 内缘宽幅泛光强度（0=原版无此层）
 HAZE_STRENGTH = 1.0                # 内缘辉光（原版 Haze；1.0=原版 lstSRS；0=关）
 DISK_DOPPLER = 0                   # 原版 lstSRS 假弯曲无多普勒，故 0=与原版一致；1=加真实多普勒
 DOPPLER_POWER = 2.0                # 多普勒指数：g²（柔和）/ g³（原版更强）
@@ -81,10 +85,10 @@ DOPPLER_TILT = 1.0                 # 多普勒强度随相机仰角的 cos²θ �
 TIME_SPEED = 0.06                  # 噪声沿方位随 t 旋进
 
 # ---- A 丝状湍流（默认全取原版值）----
-DISK_WARP = 0.0          # 域扭曲强度：低频噪声扰动采样坐标，造流体丝状旋涡。0=原版块状
-DISK_SHEAR = 0.0         # 较差自转剪切：噪声方位相位随 r 变化（内快外慢），丝拖成螺旋。0=均匀=原版
-DISK_FILAMENT = 1.0      # 方位各向异性拉伸比（>0，建议 0.5~4）：沿切向拉长结构顺流线。1=各向同性=原版
-DISK_OCTAVE_BOOST = 0    # 离线额外高频 octave 数（0/1/2）。0=原版层数；GUI 档强制 0
+DISK_WARP = 0.6          # 域扭曲强度：低频噪声扰动采样坐标，造流体丝状旋涡。0=原版块状
+DISK_SHEAR = 0.8         # 较差自转剪切：噪声方位相位随 r 变化（内快外慢），丝拖成螺旋。0=均匀=原版
+DISK_FILAMENT = 1.6      # 方位各向异性拉伸比（>0，建议 0.5~4）：沿切向拉长结构顺流线。1=各向同性=原版
+DISK_OCTAVE_BOOST = 1    # 离线额外高频 octave 数（0/1/2）。0=原版层数；GUI 档强制 0
 
 NOISE_RES = 256                    # iChannel0 噪声纹理 256²（双通道 R/G）
 ORGANIC_RES = 1024                 # iChannel1 尘埃色原生 1024²（Organic 1 原尺寸，不降采样）
@@ -132,7 +136,7 @@ STARMAP_FLIP = 0             # 1=上下翻转 v（抵消 imread 的 H 轴翻转�
 STARMAP_PROC_MIX = 0.3       # 叠加程序化星空（含星点/暗背景/程序带）的权重；0=纯图。注：叠的是整张 _proc_sky 非仅亮星
 
 # ------------------------------------------------------------------ 动画（序列帧 → ffmpeg 合成）
-ANIMATE = True                     # True=出序列帧（覆盖单帧出图）；INTERACTIVE 优先级更高
+ANIMATE = False                     # True=出序列帧（覆盖单帧出图）；INTERACTIVE 优先级更高
 ANIM_FRAMES = 60                    # 总帧数（时长 = ANIM_FRAMES / ANIM_FPS = 60/12 = 5s）
 ANIM_FPS = 12                       # 合成帧率（60帧@12fps=5s；想更顺改 120帧@24fps，同样 5s）
 ANIM_CAM_TURNS = 0.0               # 相机绕黑洞转几圈（0=相机不动，只盘流动）

@@ -8,7 +8,7 @@ from config import (vec2, vec3, vec4, NOISE_RES, ORGANIC_RES, SPIN,
                     DISK_RIN, DISK_ROUT, GLOW_FALLOFF, INNER_GLOW, DISK_TINT,
                     DUST_BRIGHT, DUST_DENSITY, TIME_SPEED, HAZE_STRENGTH, ORGANIC_ON,
                     DISK_WARP, DISK_SHEAR, DISK_FILAMENT, DISK_OCTAVE_BOOST_EFF,
-                    INNER_HALO, INNER_VEIL,
+                    INNER_HALO, INNER_VEIL, WHITE_BASE_POW, WHITE_SIZE,
                     STARMAP_ON, STARMAP_W, STARMAP_H, STARMAP_GAIN, STARMAP_ROT,
                     STARMAP_FLIP, STARMAP_PROC_MIX)
 from common import lerp, hash21
@@ -152,7 +152,12 @@ def gas_disc_sample(pos: vec3, ds: ti.f32, tparam: ti.f32) -> vec4:
         dust_glow = 1.0 / (ti.pow(1.0 - rg, 2.0) * GLOW_FALLOFF + 0.002)
         dust = vec3(1.0, 1.0, 1.0) * dust_glow * 8.2
         cov0 = ti.min(ti.max(cov0 * 0.7, 0.0), 1.0)
-        fade = ti.pow(ti.abs(dc - 0.55) + 0.4, 4.0) * 0.04
+        # 内缘白热（bcol）的径向亮度函数，解耦「亮度」与「尺寸」两件事：
+        #   第一项 pow(d+0.4, WHITE_BASE_POW)*0.04 ── 内圈亮度剖面（幂越小越饱满白热）
+        #   第二项 pow(d, 6.0)*WHITE_SIZE          ── 外缘陡墙截断（系数越大白光收得越紧）
+        # WHITE_BASE_POW=4.0 且 WHITE_SIZE=0.0 时退化为原版 pow(d+0.4,4)*0.04，逐像素回归
+        _din = ti.abs(dc - 0.55)
+        fade = ti.pow(_din + 0.4, WHITE_BASE_POW) * 0.04 + ti.pow(_din, 6.0) * WHITE_SIZE
         bloom_f = 1.0 / (dd * dd * 40.0 + fade + 0.00002)
         bcol = vec3(1.0, 1.0, 1.0) * ti.pow(bloom_f, 1.5)
         bcol *= lerp(vec3(1.7, 1.1, 1.0), vec3(0.5, 0.6, 1.0), rg * rg)

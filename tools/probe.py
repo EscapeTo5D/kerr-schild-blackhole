@@ -72,7 +72,9 @@ def render_probe(overrides=None):
     sm = getattr(config, "STARMAP_PATH", None)
     if sm and hasattr(fields, "load_starmap_tex"):
         fields.load_starmap_tex(sm)
-    render.render_frame(PROBE_PHI, PROBE_THETA, PROBE_T, samples=1)
+    # 显式传 fov：render_frame 的默认参数 fov=FOV_FACTOR 在 import 时已绑定，
+    # 改模块全局动不了它；在调用处读 config.FOV_FACTOR（已被 overrides 写过）才生效。
+    render.render_frame(PROBE_PHI, PROBE_THETA, PROBE_T, samples=1, fov=config.FOV_FACTOR)
     return fields.disp.to_numpy()
 
 
