@@ -83,3 +83,17 @@ def test_starmap_changes_sky():
     img = _probe_subprocess([])  # 子进程默认 STARMAP_PATH 指向素材 → 星空与程序化基线不同
     diff = np.abs(img - base)
     assert diff.max() > 0.02, f"星图底图未改变星空，max diff 仅 {diff.max():.4g}"
+
+
+def test_tonemap_aces_changes_output():
+    base = np.load(BASELINE)
+    img = _probe_subprocess(["TONEMAP=1"])
+    diff = np.abs(img - base)
+    assert diff.max() > 0.02, f"ACES tonemap 未生效，max diff 仅 {diff.max():.4g}"
+
+
+def test_anamorphic_changes_output():
+    base = np.load(BASELINE)
+    img = _probe_subprocess(["ANAMORPHIC_ON=1", "ANAMORPHIC_STRENGTH=1.5"])
+    diff = np.abs(img - base)
+    assert diff.max() > 0.02, f"anamorphic 未生效，max diff 仅 {diff.max():.4g}"

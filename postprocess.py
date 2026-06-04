@@ -4,10 +4,13 @@
 bloom 的下/上采样 kernel 用 ti.template() 参数收发 field，调用处（_bloom_dual）传 fields.xxx。
 k_composite / k_expose 直接读写 fields.pixels / bloom_acc / disp。
 """
+import math
 import taichi as ti
 
-from config import (vec3, BLOOM_LEVELS, BLOOM_STRENGTH,
-                    EXPOSURE_PRE, EXPOSURE_POST, CONTRAST, HIGHLIGHT_SOFT, OUTPUT_TINT)
+from config import (vec2, vec3, BLOOM_LEVELS, BLOOM_STRENGTH,
+                    EXPOSURE_PRE, EXPOSURE_POST, CONTRAST, HIGHLIGHT_SOFT, OUTPUT_TINT,
+                    TONEMAP, ANAMORPHIC_ON, ANAMORPHIC_STRENGTH, ANAMORPHIC_TINT,
+                    VIGNETTE_STRENGTH, GRAIN_STRENGTH, CHROMA_AB_STRENGTH)
 from common import lerp
 import fields
 
@@ -15,6 +18,27 @@ import fields
 @ti.func
 def luma(c: vec3) -> ti.f32:
     return c.dot(vec3(0.2126, 0.7152, 0.0722))
+
+
+@ti.func
+def tonemap_aces(c: vec3) -> vec3:
+    # Narkowicz ACES filmic 近似
+    a, b, cc, d, e = 2.51, 0.03, 2.43, 0.59, 0.14
+    return ti.math.clamp((c * (a * c + b)) / (c * (cc * c + d) + e), 0.0, 1.0)
+
+
+@ti.func
+def tonemap_agx(c: vec3) -> vec3:
+    # AgX 极简近似：压缩 + S 形 + gamma（电影向高光滚降，非精确）
+    x = ti.max(c, vec3(0.0, 0.0, 0.0))
+    x = x / (x + vec3(1.0, 1.0, 1.0))
+    x = ti.math.pow(x, vec3(1.0 / 2.2, 1.0 / 2.2, 1.0 / 2.2))
+    return ti.math.clamp(x * x * (vec3(3.0, 3.0, 3.0) - 2.0 * x), 0.0, 1.0)
+
+
+@ti.func
+def hash21p(p: vec2) -> ti.f32:
+    return ti.math.fract(ti.sin(p.dot(vec2(127.1, 311.7))) * 43758.5453)
 
 
 @ti.func
@@ -105,19 +129,48 @@ def k_clear(f: ti.template()):
 
 @ti.kernel
 def k_composite(strength: ti.f32, post: ti.f32):
+    nx = fields.pixels.shape[0]
+    ny = fields.pixels.shape[1]
     for i, j in fields.pixels:
-        c = (fields.pixels[i, j] + fields.bloom_acc[i, j] * strength) * post   # = 原版 (color+bloom*0.08)*200
-        c = ti.math.pow(c, vec3(1.5, 1.5, 1.5))
-        c = c / (vec3(1.0, 1.0, 1.0) + c)
-        c = ti.math.pow(c, vec3(1.0 / 1.5, 1.0 / 1.5, 1.0 / 1.5))
-        cs = c * c * (vec3(3.0, 3.0, 3.0) - 2.0 * c)         # smoothstep S 曲线
-        c = lerp(c, cs, CONTRAST)                            # 按 CONTRAST 调对比强度（<1 压缩动态范围）
-        # 原版 lstSRS 的轻微冷色调（R/G 指数>1 → 相对压低红绿、偏冷）。
-        # 与下方 OUTPUT_TINT 偏橙方向相反、互相抵消一部分；想更暖可把这行三个指数都设回 1.0。
-        c = ti.math.pow(c, vec3(1.3, 1.20, 1.0))
-        c = ti.math.clamp(c * 1.01, 0.0, 1.0)
-        c = ti.math.pow(c, vec3(0.7 / 2.2, 0.7 / 2.2, 0.7 / 2.2))   # gamma（HDR→显示域）
-        fields.disp[i, j] = c * vec3(OUTPUT_TINT[0], OUTPUT_TINT[1], OUTPUT_TINT[2])  # LDR 域整体染色（偏橙）
+        cx = nx * 0.5
+        cy = ny * 0.5
+        rx = (i - cx) / nx
+        ry = (j - cy) / ny
+        r2 = rx * rx + ry * ry
+        base = fields.pixels[i, j] + fields.bloom_acc[i, j] * strength
+        c = base
+        # 边缘色散：仅当 CHROMA>0 才编译该分支，默认 c=base 严格原路径（bit-exact 回归）
+        if ti.static(CHROMA_AB_STRENGTH > 0.0):
+            off = CHROMA_AB_STRENGTH * r2
+            fi = ti.cast(i, ti.f32)
+            fj = ti.cast(j, ti.f32)
+            pr = bsample(fields.pixels, fi - off * (i - cx), fj - off * (j - cy)) \
+                + bsample(fields.bloom_acc, fi - off * (i - cx), fj - off * (j - cy)) * strength
+            pb = bsample(fields.pixels, fi + off * (i - cx), fj + off * (j - cy)) \
+                + bsample(fields.bloom_acc, fi + off * (i - cx), fj + off * (j - cy)) * strength
+            c = vec3(pr[0], base[1], pb[2])
+        c = c * post
+        # tonemap 分支
+        if ti.static(TONEMAP == 1):
+            c = tonemap_aces(c)
+        elif ti.static(TONEMAP == 2):
+            c = tonemap_agx(c)
+        else:
+            c = ti.math.pow(c, vec3(1.5, 1.5, 1.5))
+            c = c / (vec3(1.0, 1.0, 1.0) + c)
+            c = ti.math.pow(c, vec3(1.0 / 1.5, 1.0 / 1.5, 1.0 / 1.5))
+            cs = c * c * (vec3(3.0, 3.0, 3.0) - 2.0 * c)
+            c = lerp(c, cs, CONTRAST)
+            c = ti.math.pow(c, vec3(1.3, 1.20, 1.0))
+            c = ti.math.clamp(c * 1.01, 0.0, 1.0)
+            c = ti.math.pow(c, vec3(0.7 / 2.2, 0.7 / 2.2, 0.7 / 2.2))
+        # 暗角（默认 0：×1.0 恒等）
+        c *= 1.0 - VIGNETTE_STRENGTH * r2 * 4.0
+        # 胶片颗粒（默认 0：+0 恒等）
+        gn = hash21p(vec2(ti.cast(i, ti.f32), ti.cast(j, ti.f32))) - 0.5
+        c += GRAIN_STRENGTH * gn
+        c = ti.math.clamp(c, 0.0, 1.0)
+        fields.disp[i, j] = c * vec3(OUTPUT_TINT[0], OUTPUT_TINT[1], OUTPUT_TINT[2])
 
 
 @ti.kernel
@@ -128,6 +181,27 @@ def k_expose(e: ti.f32):
         hard = ti.min(x, vec3(1.0, 1.0, 1.0))
         soft = vec3(1.0, 1.0, 1.0) - ti.math.exp(-x)
         fields.pixels[i, j] = lerp(hard, soft, HIGHLIGHT_SOFT)
+
+
+@ti.kernel
+def k_anamorphic(src: ti.template(), strength: ti.f32,
+                 tr: ti.f32, tg: ti.f32, tb: ti.f32):
+    """横向 1D 宽模糊镜头拉丝，加权累加到 bloom_acc。"""
+    nx = fields.bloom_acc.shape[0]
+    ny = fields.bloom_acc.shape[1]
+    sx = src.shape[0]
+    sy = src.shape[1]
+    for i, j in fields.bloom_acc:
+        u = (i + 0.5) / nx * sx
+        v = (j + 0.5) / ny * sy
+        acc = vec3(0.0, 0.0, 0.0)
+        wsum = 0.0
+        for k in range(-12, 13):
+            w = ti.exp(-(k * k) / 40.0)
+            acc += bsample(src, u + k * 1.5, v) * w
+            wsum += w
+        acc = acc / wsum
+        fields.bloom_acc[i, j] += acc * strength * vec3(tr, tg, tb)
 
 
 def _bloom_dual():
@@ -144,4 +218,7 @@ def _bloom_dual():
 def postprocess():
     k_expose(EXPOSURE_PRE)                 # ×PRE → 高光处理（= 原版 BufferA 输出）
     _bloom_dual()                          # Jimenez/COD dual-filter bloom
+    if ANAMORPHIC_ON == 1:
+        k_anamorphic(fields.bloom_lv[2], ANAMORPHIC_STRENGTH,
+                     ANAMORPHIC_TINT[0], ANAMORPHIC_TINT[1], ANAMORPHIC_TINT[2])
     k_composite(BLOOM_STRENGTH, EXPOSURE_POST)   # 加 bloom → ×POST → tonemap（= 原版 Image）

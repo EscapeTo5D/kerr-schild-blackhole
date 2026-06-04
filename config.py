@@ -103,6 +103,15 @@ HIGHLIGHT_SOFT = 1.0               # 高光处理：0=硬 saturate（原版，�
 OUTPUT_TINT = (1.0, 0.82, 0.62)    # 最终输出整体色调（LDR 域，连白区也染）：R 保持 1、压 G/B 即偏橙；(1,1,1)=中性
 SAMPLES = 2                        # TAA 超采样数；1=关（动画临时降配；出大图改回 8）
 
+# ---- D 后期电影化（默认全取原版/关闭）----
+TONEMAP = 0                  # 0=现有曲线 / 1=ACES / 2=AgX 近似
+ANAMORPHIC_ON = 0            # 1=横向镜头拉丝
+ANAMORPHIC_STRENGTH = 0.5    # 拉丝强度
+ANAMORPHIC_TINT = (0.4, 0.6, 1.0)  # 拉丝色染（经典冷蓝）
+VIGNETTE_STRENGTH = 0.0      # 暗角强度（0=关）
+GRAIN_STRENGTH = 0.0         # 胶片颗粒幅度（0=关）
+CHROMA_AB_STRENGTH = 0.0     # 边缘色散强度（0=关）
+
 R_SKY = 60.0                       # 逃逸半径（KS 下偏折发生在近黑洞处，60 足够）
 
 # ---- C 图像底图星空 ----
