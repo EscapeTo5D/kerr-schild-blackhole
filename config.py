@@ -98,7 +98,7 @@ BLOOM_STRENGTH = 0.07              # bloom 叠加强度（= 原版 GetBloom*0.08
 # 两段曝光（复刻原版顺序：×PRE 高光处理 → 加 bloom → ×POST → tonemap）
 EXPOSURE_PRE = 0.01                # 钳位前缩放（净曝光≈PRE×POST=0.05）
 EXPOSURE_POST = 5.0                # 钳位后增益
-CONTRAST = 1.0                     # tonemap S 曲线（smoothstep）强度：1=原版增对比；<1 压缩动态范围（高光降、暗部抬）；0=不增对比
+CONTRAST = 1.0                     # tonemap S 曲线（smoothstep）强度：1=原版增对比；<1 压缩动态范围（高光降、暗部抬）；0=不增对比（仅 TONEMAP=0 生效；ACES/AgX 自带 S 形对比）
 HIGHLIGHT_SOFT = 1.0               # 高光处理：0=硬 saturate（原版，高光死白）；1=软滚降 1-e^-x（高光不死白、保留层次）
 OUTPUT_TINT = (1.0, 0.82, 0.62)    # 最终输出整体色调（LDR 域，连白区也染）：R 保持 1、压 G/B 即偏橙；(1,1,1)=中性
 SAMPLES = 2                        # TAA 超采样数；1=关（动画临时降配；出大图改回 8）

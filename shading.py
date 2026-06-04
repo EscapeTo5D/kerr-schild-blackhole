@@ -11,7 +11,7 @@ from config import (vec2, vec3, vec4, NOISE_RES, ORGANIC_RES, SPIN,
                     INNER_HALO, INNER_VEIL,
                     STARMAP_ON, STARMAP_W, STARMAP_H, STARMAP_GAIN, STARMAP_ROT,
                     STARMAP_FLIP, STARMAP_PROC_MIX)
-from common import lerp
+from common import lerp, hash21
 import fields
 
 
@@ -19,11 +19,6 @@ import fields
 def smoothstep2(e0: ti.f32, e1: ti.f32, x: ti.f32) -> ti.f32:
     t = ti.min(ti.max((x - e0) / (e1 - e0), 0.0), 1.0)
     return t * t * (3.0 - 2.0 * t)
-
-
-@ti.func
-def hash21(p: vec2) -> ti.f32:
-    return ti.math.fract(ti.sin(p.dot(vec2(127.1, 311.7))) * 43758.5453)
 
 
 @ti.func

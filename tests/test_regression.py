@@ -97,3 +97,24 @@ def test_anamorphic_changes_output():
     img = _probe_subprocess(["ANAMORPHIC_ON=1", "ANAMORPHIC_STRENGTH=1.5"])
     diff = np.abs(img - base)
     assert diff.max() > 0.02, f"anamorphic 未生效，max diff 仅 {diff.max():.4g}"
+
+
+def test_vignette_changes_output():
+    base = np.load(BASELINE)
+    img = _probe_subprocess(["VIGNETTE_STRENGTH=0.8"])
+    diff = np.abs(img - base)
+    assert diff.max() > 0.02, f"暗角未生效，max diff 仅 {diff.max():.4g}"
+
+
+def test_grain_changes_output():
+    base = np.load(BASELINE)
+    img = _probe_subprocess(["GRAIN_STRENGTH=0.15"])
+    diff = np.abs(img - base)
+    assert diff.max() > 0.02, f"颗粒未生效，max diff 仅 {diff.max():.4g}"
+
+
+def test_chroma_changes_output():
+    base = np.load(BASELINE)
+    img = _probe_subprocess(["CHROMA_AB_STRENGTH=3.0"])
+    diff = np.abs(img - base)
+    assert diff.max() > 0.02, f"色散未生效，max diff 仅 {diff.max():.4g}"

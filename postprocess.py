@@ -4,14 +4,13 @@
 bloom 的下/上采样 kernel 用 ti.template() 参数收发 field，调用处（_bloom_dual）传 fields.xxx。
 k_composite / k_expose 直接读写 fields.pixels / bloom_acc / disp。
 """
-import math
 import taichi as ti
 
 from config import (vec2, vec3, BLOOM_LEVELS, BLOOM_STRENGTH,
                     EXPOSURE_PRE, EXPOSURE_POST, CONTRAST, HIGHLIGHT_SOFT, OUTPUT_TINT,
                     TONEMAP, ANAMORPHIC_ON, ANAMORPHIC_STRENGTH, ANAMORPHIC_TINT,
                     VIGNETTE_STRENGTH, GRAIN_STRENGTH, CHROMA_AB_STRENGTH)
-from common import lerp
+from common import lerp, hash21
 import fields
 
 
@@ -34,11 +33,6 @@ def tonemap_agx(c: vec3) -> vec3:
     x = x / (x + vec3(1.0, 1.0, 1.0))
     x = ti.math.pow(x, vec3(1.0 / 2.2, 1.0 / 2.2, 1.0 / 2.2))
     return ti.math.clamp(x * x * (vec3(3.0, 3.0, 3.0) - 2.0 * x), 0.0, 1.0)
-
-
-@ti.func
-def hash21p(p: vec2) -> ti.f32:
-    return ti.math.fract(ti.sin(p.dot(vec2(127.1, 311.7))) * 43758.5453)
 
 
 @ti.func
@@ -139,6 +133,7 @@ def k_composite(strength: ti.f32, post: ti.f32):
         r2 = rx * rx + ry * ry
         base = fields.pixels[i, j] + fields.bloom_acc[i, j] * strength
         c = base
+        # 边缘色散：开启后每像素 +4 次双线性采样（实时模式慎用）；CHROMA=0 时整块不编译，bit-exact
         # 边缘色散：仅当 CHROMA>0 才编译该分支，默认 c=base 严格原路径（bit-exact 回归）
         if ti.static(CHROMA_AB_STRENGTH > 0.0):
             off = CHROMA_AB_STRENGTH * r2
@@ -152,8 +147,10 @@ def k_composite(strength: ti.f32, post: ti.f32):
         c = c * post
         # tonemap 分支
         if ti.static(TONEMAP == 1):
+            # 注：CONTRAST 旋钮不作用于 ACES/AgX（自带对比度）
             c = tonemap_aces(c)
         elif ti.static(TONEMAP == 2):
+            # 注：CONTRAST 旋钮不作用于 ACES/AgX（自带对比度）
             c = tonemap_agx(c)
         else:
             c = ti.math.pow(c, vec3(1.5, 1.5, 1.5))
@@ -164,10 +161,11 @@ def k_composite(strength: ti.f32, post: ti.f32):
             c = ti.math.pow(c, vec3(1.3, 1.20, 1.0))
             c = ti.math.clamp(c * 1.01, 0.0, 1.0)
             c = ti.math.pow(c, vec3(0.7 / 2.2, 0.7 / 2.2, 0.7 / 2.2))
+        # 暗角：×4.0 使 STRENGTH=0.5 时角落(r2≈0.5)恰全暗；>0.5 靠末尾 clamp 兜底。默认 0 → ×1.0 恒等
         # 暗角（默认 0：×1.0 恒等）
         c *= 1.0 - VIGNETTE_STRENGTH * r2 * 4.0
         # 胶片颗粒（默认 0：+0 恒等）
-        gn = hash21p(vec2(ti.cast(i, ti.f32), ti.cast(j, ti.f32))) - 0.5
+        gn = hash21(vec2(ti.cast(i, ti.f32), ti.cast(j, ti.f32))) - 0.5
         c += GRAIN_STRENGTH * gn
         c = ti.math.clamp(c, 0.0, 1.0)
         fields.disp[i, j] = c * vec3(OUTPUT_TINT[0], OUTPUT_TINT[1], OUTPUT_TINT[2])
@@ -196,9 +194,12 @@ def k_anamorphic(src: ti.template(), strength: ti.f32,
         v = (j + 0.5) / ny * sy
         acc = vec3(0.0, 0.0, 0.0)
         wsum = 0.0
-        for k in range(-12, 13):
-            w = ti.exp(-(k * k) / 40.0)
-            acc += bsample(src, u + k * 1.5, v) * w
+        ANAM_TAPS = 12          # 半径 tap 数（±12=25 tap）；在 src 分辨率上的横向扩展
+        ANAM_SIGMA2 = 40.0      # 高斯 σ²（tap 空间），控制软硬
+        ANAM_STEP = 1.5         # 每 tap 横向步长（源纹理坐标）
+        for k in range(-ANAM_TAPS, ANAM_TAPS + 1):
+            w = ti.exp(-(k * k) / ANAM_SIGMA2)
+            acc += bsample(src, u + k * ANAM_STEP, v) * w
             wsum += w
         acc = acc / wsum
         fields.bloom_acc[i, j] += acc * strength * vec3(tr, tg, tb)
@@ -219,6 +220,7 @@ def postprocess():
     k_expose(EXPOSURE_PRE)                 # ×PRE → 高光处理（= 原版 BufferA 输出）
     _bloom_dual()                          # Jimenez/COD dual-filter bloom
     if ANAMORPHIC_ON == 1:
+        # bloom_lv[2]=RES/8 宽层：拉丝更宽更电影化（lv[0] 会偏锐利、不够"镜头感"）
         k_anamorphic(fields.bloom_lv[2], ANAMORPHIC_STRENGTH,
                      ANAMORPHIC_TINT[0], ANAMORPHIC_TINT[1], ANAMORPHIC_TINT[2])
     k_composite(BLOOM_STRENGTH, EXPOSURE_POST)   # 加 bloom → ×POST → tonemap（= 原版 Image）
