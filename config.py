@@ -36,7 +36,7 @@ ORGANIC_TEX_PATH = _rel("assets/organic1.jpg")          # iChannel1 尘埃色，
 # 想要一轮完整的「电影化」观感，把下面这组推荐值填到各对应旋钮（保留 TONEMAP=0 的深黑招牌色调）：
 #   丝状湍流：   DISK_WARP=0.6  DISK_SHEAR=0.8  DISK_FILAMENT=1.6  DISK_OCTAVE_BOOST=1
 #   光子环/内缘： PHOTONRING_ON=1  PHOTONRING_STRENGTH=2.0  INNER_HALO=1.0  INNER_VEIL=0.6
-#   星图背景：   STARMAP_GAIN=1.8  STARMAP_PROC_MIX=0.25     （STARMAP_PATH 已默认指向 ESO 银河图）
+#   星图背景：   STARMAP_GAIN=1.8  STARMAP_PROC_MIX=0.25  STARMAP_FLIP=1  （FLIP=1 抵消 imread 翻转，银河北极朝上）
 #   后期：       TONEMAP=0  ANAMORPHIC_ON=1  ANAMORPHIC_STRENGTH=0.8  VIGNETTE_STRENGTH=0.3
 # 逐项可调；想更狠把 DISK_*/PHOTONRING_STRENGTH/STARMAP_GAIN 调大。GUI 实时档会自动跳过额外 octave。
 

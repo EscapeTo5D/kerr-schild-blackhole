@@ -162,11 +162,11 @@ def k_composite(strength: ti.f32, post: ti.f32):
             c = ti.math.clamp(c * 1.01, 0.0, 1.0)
             c = ti.math.pow(c, vec3(0.7 / 2.2, 0.7 / 2.2, 0.7 / 2.2))
         # 暗角：×4.0 使 STRENGTH=0.5 时角落(r2≈0.5)恰全暗；>0.5 靠末尾 clamp 兜底。默认 0 → ×1.0 恒等
-        # 暗角（默认 0：×1.0 恒等）
         c *= 1.0 - VIGNETTE_STRENGTH * r2 * 4.0
-        # 胶片颗粒（默认 0：+0 恒等）
-        gn = hash21(vec2(ti.cast(i, ti.f32), ti.cast(j, ti.f32))) - 0.5
-        c += GRAIN_STRENGTH * gn
+        # 胶片颗粒：ti.static 守卫使 GRAIN=0 时整块不编译，省每像素一次 hash；默认恒等
+        if ti.static(GRAIN_STRENGTH > 0.0):
+            gn = hash21(vec2(ti.cast(i, ti.f32), ti.cast(j, ti.f32))) - 0.5
+            c += GRAIN_STRENGTH * gn
         c = ti.math.clamp(c, 0.0, 1.0)
         fields.disp[i, j] = c * vec3(OUTPUT_TINT[0], OUTPUT_TINT[1], OUTPUT_TINT[2])
 
@@ -220,6 +220,7 @@ def postprocess():
     k_expose(EXPOSURE_PRE)                 # ×PRE → 高光处理（= 原版 BufferA 输出）
     _bloom_dual()                          # Jimenez/COD dual-filter bloom
     if ANAMORPHIC_ON == 1:
+        assert BLOOM_LEVELS >= 3, "ANAMORPHIC 需 BLOOM_LEVELS>=3（拉丝取 bloom_lv[2] 宽层）"
         # bloom_lv[2]=RES/8 宽层：拉丝更宽更电影化（lv[0] 会偏锐利、不够"镜头感"）
         k_anamorphic(fields.bloom_lv[2], ANAMORPHIC_STRENGTH,
                      ANAMORPHIC_TINT[0], ANAMORPHIC_TINT[1], ANAMORPHIC_TINT[2])
