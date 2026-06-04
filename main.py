@@ -12,6 +12,7 @@ import os
 from config import (SPIN, RES_X, RES_Y, SAMPLES, CAMERA_PHI, CAMERA_THETA, TIME_OFFSET,
                     OUT_PATH, NOISE_TEX_PATH, ORGANIC_TEX_PATH, INTERACTIVE, _rel,
                     FOV_FACTOR, GUI_TIME_STEP, GUI_ZOOM_STEP,
+                    CAMERA_ROLL, CAMERA_PAN_X, CAMERA_PAN_Y, CAM_DIST,
                     ANIMATE, ANIM_FRAMES, ANIM_FPS, ANIM_CAM_TURNS, ANIM_DISK_TURN, ANIM_OUT_DIR,
                     ANIM_AUTO_MERGE, ANIM_VIDEO)
 import fields
@@ -74,9 +75,15 @@ def run_interactive():
     gui = ti.GUI("Interstellar · Kerr-Schild", res=(RES_X, RES_Y))
     phi, theta, t = CAMERA_PHI, CAMERA_THETA, TIME_OFFSET
     fov = FOV_FACTOR
+    roll, pan_x, pan_y, cam_dist = CAMERA_ROLL, CAMERA_PAN_X, CAMERA_PAN_Y, CAM_DIST
     paused = False
     mouse_prev = None
-    print("← → 转方位 | ↑ ↓ 仰角 | Ctrl+滚轮 缩放视角 | 空格 暂停 | R 复位 | P 截图 | ESC 退出")
+    print("【相机实时调参】")
+    print("  ← → 转方位 phi | ↑ ↓ 仰角 theta | 鼠标左键拖拽 = phi/theta")
+    print("  Q E 滚转 roll | A D 主点左右 pan_x | W S 主点上下 pan_y")
+    print("  滚轮 推拉远近 cam_dist | Ctrl+滚轮 缩放视角 fov")
+    print("  空格 暂停盘流动 | R 复位 | P 截图 | ESC 退出")
+    print("  调好后看左上角数值，把 ROLL/PAN_X/PAN_Y/THETA/FOV_FACTOR/CAM_DIST 填回 config.py")
     while gui.running:
         for e in gui.get_events(ti.GUI.PRESS, ti.GUI.WHEEL):
             if e.key == ti.GUI.ESCAPE:
@@ -85,16 +92,21 @@ def run_interactive():
                 paused = not paused
             elif e.key == 'r':
                 phi, theta, t, fov = CAMERA_PHI, CAMERA_THETA, TIME_OFFSET, FOV_FACTOR
+                roll, pan_x, pan_y, cam_dist = CAMERA_ROLL, CAMERA_PAN_X, CAMERA_PAN_Y, CAM_DIST
             elif e.key == 'p':
                 ti.tools.imwrite(fields.disp, _rel("interstellar_ks_shot.png"))
-                print("已截图: interstellar_ks_shot.png")
-            elif e.key == ti.GUI.WHEEL and gui.is_pressed(ti.GUI.CTRL):
-                # Ctrl+滚轮：上滚放大视角（FOV 变窄、像放大镜），下滚缩小；相机位置不动
-                if e.delta[1] > 0:
-                    fov *= GUI_ZOOM_STEP
-                elif e.delta[1] < 0:
-                    fov /= GUI_ZOOM_STEP
-                fov = min(max(fov, 0.3), 8.0)
+                print(f"已截图: interstellar_ks_shot.png  | 当前相机: "
+                      f"CAMERA_ROLL={roll:.3f} CAMERA_PAN_X={pan_x:.3f} CAMERA_PAN_Y={pan_y:.3f} "
+                      f"CAMERA_THETA={theta:.3f} FOV_FACTOR={fov:.3f} CAM_DIST={cam_dist:.2f} CAMERA_PHI={phi:.3f}")
+            elif e.key == ti.GUI.WHEEL:
+                if gui.is_pressed(ti.GUI.CTRL):
+                    # Ctrl+滚轮：缩放视角（FOV 变窄=放大）；相机位置不动
+                    fov *= GUI_ZOOM_STEP if e.delta[1] > 0 else (1.0 / GUI_ZOOM_STEP)
+                    fov = min(max(fov, 0.3), 8.0)
+                else:
+                    # 裸滚轮：推拉相机远近（上滚拉近）；几何随距离变（前景沉浸感）
+                    cam_dist *= (1.0 / 1.06) if e.delta[1] > 0 else 1.06
+                    cam_dist = min(max(cam_dist, 5.0), 120.0)
         if gui.is_pressed(ti.GUI.LEFT):
             phi -= 0.03
         if gui.is_pressed(ti.GUI.RIGHT):
@@ -103,6 +115,18 @@ def run_interactive():
             theta = min(theta + 0.02, 1.4)
         if gui.is_pressed(ti.GUI.DOWN):
             theta = max(theta - 0.02, -1.4)
+        if gui.is_pressed('q'):
+            roll -= 0.01
+        if gui.is_pressed('e'):
+            roll += 0.01
+        if gui.is_pressed('a'):
+            pan_x -= 0.01
+        if gui.is_pressed('d'):
+            pan_x += 0.01
+        if gui.is_pressed('w'):
+            pan_y += 0.01
+        if gui.is_pressed('s'):
+            pan_y -= 0.01
         if gui.is_pressed(ti.GUI.LMB):
             mx, my = gui.get_cursor_pos()
             if mouse_prev is not None:
@@ -113,11 +137,13 @@ def run_interactive():
             mouse_prev = None
         if not paused:
             t += GUI_TIME_STEP
-        render_frame(phi, theta, t, fov=fov)   # samples 默认走 config.SAMPLES（GUI 模式 = GUI_SAMPLES）
+        render_frame(phi, theta, t, fov=fov, roll=roll, pan_x=pan_x, pan_y=pan_y, cam_dist=cam_dist)
         gui.set_image(fields.disp)
-        gui.text(f"a={SPIN}  phi={phi:.2f} theta={theta:.2f} fov={fov:.2f}"
+        gui.text(f"a={SPIN}  phi={phi:.2f} theta={theta:.3f} fov={fov:.2f} cam_dist={cam_dist:.1f}"
                  + ("  [PAUSED]" if paused else ""),
                  pos=(0.02, 0.97), color=0xFFFFFF)
+        gui.text(f"roll={roll:.3f}  pan_x={pan_x:.3f}  pan_y={pan_y:.3f}",
+                 pos=(0.02, 0.94), color=0xFFFF66)
         gui.show()
 
 

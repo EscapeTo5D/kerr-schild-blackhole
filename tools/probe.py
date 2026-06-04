@@ -72,9 +72,11 @@ def render_probe(overrides=None):
     # 查 STARMAP_ON（已含开关+路径双判据）：关时 starmap_tex 是 (1,1) 占位，加载会崩
     if getattr(config, "STARMAP_ON", 0) == 1 and hasattr(fields, "load_starmap_tex"):
         fields.load_starmap_tex(config.STARMAP_PATH)
-    # 显式传 fov：render_frame 的默认参数 fov=FOV_FACTOR 在 import 时已绑定，
-    # 改模块全局动不了它；在调用处读 config.FOV_FACTOR（已被 overrides 写过）才生效。
-    render.render_frame(PROBE_PHI, PROBE_THETA, PROBE_T, samples=1, fov=config.FOV_FACTOR)
+    # 显式传相机参数：render_frame 的默认参数在 import 时已绑定，改模块全局动不了它；
+    # 在调用处读 config.*（已被 overrides 写过）才生效。fov/roll/pan/cam_dist 同理。
+    render.render_frame(PROBE_PHI, PROBE_THETA, PROBE_T, samples=1, fov=config.FOV_FACTOR,
+                        roll=config.CAMERA_ROLL, pan_x=config.CAMERA_PAN_X,
+                        pan_y=config.CAMERA_PAN_Y, cam_dist=config.CAM_DIST)
     return fields.disp.to_numpy()
 
 

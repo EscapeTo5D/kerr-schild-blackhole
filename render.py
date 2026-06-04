@@ -7,7 +7,7 @@ import taichi as ti
 from config import (vec3, vec4, CAM_DIST, SPIN, RES_X, RES_Y, FOV_FACTOR, INT_STEP,
                     MAX_STEPS, DISK_ON, DISK_RIN, DISK_ROUT, DISK_HALF_Z, DISK_STEP,
                     R_SKY, DISK_DOPPLER, DOPPLER_POWER, DOPPLER_TILT, SAMPLES,
-                    CAMERA_PHI, CAMERA_THETA, TIME_OFFSET,
+                    CAMERA_PHI, CAMERA_THETA, TIME_OFFSET, CAMERA_ROLL, CAMERA_PAN_X, CAMERA_PAN_Y,
                     PHOTONRING_ON, PHOTONRING_STRENGTH, PHOTONRING_WIDTH, PHOTONRING_TINT, PHOTONRING_RADIUS)
 import fields
 from geodesic import tetrad_basis, get_metric, transportStepRK45, rFromCoords
@@ -16,19 +16,20 @@ from postprocess import k_clear, postprocess
 
 
 @ti.kernel
-def render(ang_phi: ti.f32, ang_theta: ti.f32, tparam: ti.f32, jx: ti.f32, jy: ti.f32, fov: ti.f32):
+def render(ang_phi: ti.f32, ang_theta: ti.f32, tparam: ti.f32, jx: ti.f32, jy: ti.f32, fov: ti.f32,
+           roll: ti.f32, pan_x: ti.f32, pan_y: ti.f32, cam_dist: ti.f32):
     # 相机位置（= blackhole_core 的 KS 嵌入）
-    xy_proj = ti.sqrt(CAM_DIST ** 2 + SPIN ** 2) * ti.cos(ang_theta)
+    xy_proj = ti.sqrt(cam_dist ** 2 + SPIN ** 2) * ti.cos(ang_theta)
     cam_x = xy_proj * ti.cos(ang_phi)
     cam_y = xy_proj * ti.sin(ang_phi)
-    cam_z = CAM_DIST * ti.sin(ang_theta)
+    cam_z = cam_dist * ti.sin(ang_theta)
     camPos = vec4(0.0, cam_x, cam_y, cam_z)
 
     time_v = vec4(1.0, 0.0, 0.0, 0.0)
     aim = vec4(0.0, cam_x, cam_y, cam_z)
-    up_x = -ti.sqrt(CAM_DIST ** 2 + SPIN ** 2) * ti.sin(ang_theta) * ti.cos(ang_phi)
-    up_y = -ti.sqrt(CAM_DIST ** 2 + SPIN ** 2) * ti.sin(ang_theta) * ti.sin(ang_phi)
-    up_z = CAM_DIST * ti.cos(ang_theta)
+    up_x = -ti.sqrt(cam_dist ** 2 + SPIN ** 2) * ti.sin(ang_theta) * ti.cos(ang_phi)
+    up_y = -ti.sqrt(cam_dist ** 2 + SPIN ** 2) * ti.sin(ang_theta) * ti.sin(ang_phi)
+    up_z = cam_dist * ti.cos(ang_theta)
     vert = vec4(0.0, up_x, up_y, up_z)
     axes = tetrad_basis(camPos, time_v, aim, vert)
     E0, E1, E2, E3 = axes[:, 0], axes[:, 1], axes[:, 2], axes[:, 3]
@@ -42,7 +43,15 @@ def render(ang_phi: ti.f32, ang_theta: ti.f32, tparam: ti.f32, jx: ti.f32, jy: t
     for i, j in fields.pixels:
         ux = (2.0 * (i + 0.5 + jx) - RES_X) / RES_X
         uy = (2.0 * (j + 0.5 + jy) - RES_Y) / RES_X
-        d_vec = vec3(-fov, ux, uy).normalized()
+        # 主点偏移：把黑洞（前向 ux=uy=0 的光线）挪到屏幕 (pan_x, pan_y)
+        u = ux - pan_x
+        v = uy - pan_y
+        # 滚转：绕视线轴旋转横向采样（=画面绕黑洞点滚转），盘斜成对角线
+        cr = ti.cos(roll)
+        sr = ti.sin(roll)
+        ur = u * cr - v * sr
+        vr = u * sr + v * cr
+        d_vec = vec3(-fov, ur, vr).normalized()
         dir4D = -E0 + d_vec.x * E1 + d_vec.y * E2 + d_vec.z * E3
 
         pos = camPos
@@ -122,13 +131,14 @@ def _halton(idx, base):
     return r
 
 
-def render_frame(phi=CAMERA_PHI, theta=CAMERA_THETA, t=TIME_OFFSET, samples=None, fov=FOV_FACTOR):
+def render_frame(phi=CAMERA_PHI, theta=CAMERA_THETA, t=TIME_OFFSET, samples=None, fov=FOV_FACTOR,
+                 roll=CAMERA_ROLL, pan_x=CAMERA_PAN_X, pan_y=CAMERA_PAN_Y, cam_dist=CAM_DIST):
     n = SAMPLES if samples is None else samples
     k_clear(fields.samp_acc)
     for s in range(n):
         jx = _halton(s + 1, 2) - 0.5 if n > 1 else 0.0
         jy = _halton(s + 1, 3) - 0.5 if n > 1 else 0.0
-        render(phi, theta, t, jx, jy, fov)
+        render(phi, theta, t, jx, jy, fov, roll, pan_x, pan_y, cam_dist)
     k_avg_to_pixels(1.0 / n)
     postprocess()
     ti.sync()
