@@ -75,8 +75,9 @@ def test_inner_layers_change_output():
 
 def test_starmap_changes_sky():
     import pytest
-    from config import STARMAP_PATH
-    if not STARMAP_PATH or not os.path.exists(STARMAP_PATH):
+    # 直接查磁盘素材，避免读到被 render_probe 就地改成 None 的 config.STARMAP_PATH（同进程污染）
+    asset = os.path.join(ROOT, "assets", "milkyway_eso0932a.jpg")
+    if not os.path.exists(asset):
         pytest.skip("星图素材未找到，跳过")
     base = np.load(BASELINE)
     img = _probe_subprocess([])  # 子进程默认 STARMAP_PATH 指向素材 → 星空与程序化基线不同
