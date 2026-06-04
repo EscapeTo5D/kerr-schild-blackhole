@@ -13,8 +13,8 @@ BASELINE = os.path.join(os.path.dirname(__file__), "baseline_probe.npy")
 
 def test_default_render_matches_baseline():
     from tools.probe import render_probe
-    img = render_probe()
-    assert os.path.exists(BASELINE), "基线缺失：先跑 Task 1 生成 tests/baseline_probe.npy"
+    img = render_probe(overrides={"STARMAP_PATH": None, "STARMAP_ON": 0})
+    assert os.path.exists(BASELINE), "基线缺失：先跑 Task 1"
     base = np.load(BASELINE)
     assert img.shape == base.shape
     diff = np.abs(img - base)
@@ -71,3 +71,10 @@ def test_inner_layers_change_output():
     img = _probe_subprocess(["INNER_HALO=2.0", "INNER_VEIL=1.5"])
     diff = np.abs(img - base)
     assert diff.max() > 0.02, f"内缘分层未生效，max diff 仅 {diff.max():.4g}"
+
+
+def test_starmap_changes_sky():
+    base = np.load(BASELINE)
+    img = _probe_subprocess([])  # 子进程默认 STARMAP_PATH 指向素材 → 星空与程序化基线不同
+    diff = np.abs(img - base)
+    assert diff.max() > 0.02, f"星图底图未改变星空，max diff 仅 {diff.max():.4g}"

@@ -125,6 +125,9 @@ def main():
     fields.build()
     fields.load_noise_tex(NOISE_TEX_PATH or None)
     fields.load_organic_tex(ORGANIC_TEX_PATH or None)
+    from config import STARMAP_PATH
+    if STARMAP_PATH:
+        fields.load_starmap_tex(STARMAP_PATH)
     if INTERACTIVE:
         run_interactive()
     elif ANIMATE:

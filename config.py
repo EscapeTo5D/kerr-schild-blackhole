@@ -105,6 +105,14 @@ SAMPLES = 2                        # TAA 超采样数；1=关（动画临时降�
 
 R_SKY = 60.0                       # 逃逸半径（KS 下偏折发生在近黑洞处，60 足够）
 
+# ---- C 图像底图星空 ----
+STARMAP_PATH = _rel("assets/milkyway_eso0932a.jpg")  # None=回退纯程序化星空（回归安全）
+STARMAP_RES = (4096, 2048)   # 星图采样分辨率（W,H，2:1）。显存=W*H*3*4 字节≈100MB
+STARMAP_GAIN = 1.0           # 底图亮度增益
+STARMAP_ROT = 0.0            # 方位旋转（绕极轴，单位"圈"，对准银河）
+STARMAP_FLIP = 0             # 1=上下翻转 v（朝向修正）
+STARMAP_PROC_MIX = 0.3       # 程序化近景亮星叠加权重（0=纯图）
+
 # ------------------------------------------------------------------ 动画（序列帧 → ffmpeg 合成）
 ANIMATE = True                     # True=出序列帧（覆盖单帧出图）；INTERACTIVE 优先级更高
 ANIM_FRAMES = 60                    # 总帧数（时长 = ANIM_FRAMES / ANIM_FPS = 60/12 = 5s）
@@ -126,3 +134,7 @@ if INTERACTIVE:
 
 # A：离线才加额外 octave；GUI 实时档强制 0（编译期常量，被 ti.static 用）
 DISK_OCTAVE_BOOST_EFF = 0 if INTERACTIVE else DISK_OCTAVE_BOOST
+
+# C：星图是否启用（编译期常量，被 ti.static 用）+ 尺寸常量
+STARMAP_ON = 1 if STARMAP_PATH else 0
+STARMAP_W, STARMAP_H = STARMAP_RES

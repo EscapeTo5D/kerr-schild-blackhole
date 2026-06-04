@@ -8,7 +8,9 @@ from config import (vec2, vec3, vec4, NOISE_RES, ORGANIC_RES, SPIN,
                     DISK_RIN, DISK_ROUT, GLOW_FALLOFF, INNER_GLOW, DISK_TINT,
                     DUST_BRIGHT, DUST_DENSITY, TIME_SPEED, HAZE_STRENGTH, ORGANIC_ON,
                     DISK_WARP, DISK_SHEAR, DISK_FILAMENT, DISK_OCTAVE_BOOST_EFF,
-                    INNER_HALO, INNER_VEIL)
+                    INNER_HALO, INNER_VEIL,
+                    STARMAP_ON, STARMAP_W, STARMAP_H, STARMAP_GAIN, STARMAP_ROT,
+                    STARMAP_FLIP, STARMAP_PROC_MIX)
 from common import lerp
 import fields
 
@@ -25,7 +27,7 @@ def hash21(p: vec2) -> ti.f32:
 
 
 @ti.func
-def sky_color(theta: ti.f32, phi: ti.f32) -> vec3:
+def _proc_sky(theta: ti.f32, phi: ti.f32) -> vec3:
     """程序化星空：暗背景 + 网格哈希撒点星 + 暗弱银河带。"""
     uv = vec2(phi / (2.0 * math.pi), theta / math.pi)
     col = vec3(0.006, 0.008, 0.018)
@@ -42,6 +44,41 @@ def sky_color(theta: ti.f32, phi: ti.f32) -> vec3:
     tint = vec3(0.8 + 0.2 * hash21(cell + vec2(3.0, 7.0)), 0.85,
                 0.9 + 0.1 * hash21(cell + vec2(7.0, 3.0)))
     col += star * tint * 3.0
+    return col
+
+
+@ti.func
+def sample_starmap(u: ti.f32, v: ti.f32) -> vec3:
+    """等距柱状双线性采样：u 方位 wrap，v 极向钳位。"""
+    gx = u * STARMAP_W
+    gy = v * STARMAP_H
+    i0 = int(ti.floor(gx))
+    j0 = int(ti.floor(gy))
+    fx = gx - i0
+    fy = gy - j0
+    i0 = i0 % STARMAP_W
+    i1 = (i0 + 1) % STARMAP_W
+    j0 = ti.min(ti.max(j0, 0), STARMAP_H - 1)
+    j1 = ti.min(j0 + 1, STARMAP_H - 1)
+    a = fields.starmap_tex[i0, j0]
+    b = fields.starmap_tex[i1, j0]
+    c = fields.starmap_tex[i0, j1]
+    d = fields.starmap_tex[i1, j1]
+    return lerp(lerp(a, b, fx), lerp(c, d, fx), fy)
+
+
+@ti.func
+def sky_color(theta: ti.f32, phi: ti.f32) -> vec3:
+    col = vec3(0.0, 0.0, 0.0)
+    if ti.static(STARMAP_ON == 1):
+        u = ti.math.fract(phi / (2.0 * math.pi) + STARMAP_ROT)
+        v = ti.min(ti.max(theta / math.pi, 0.0), 1.0)
+        if ti.static(STARMAP_FLIP == 1):
+            v = 1.0 - v
+        col = sample_starmap(u, v) * STARMAP_GAIN
+        col += STARMAP_PROC_MIX * _proc_sky(theta, phi)
+    else:
+        col = _proc_sky(theta, phi)
     return col
 
 
