@@ -76,6 +76,7 @@ def sky_color(theta: ti.f32, phi: ti.f32) -> vec3:
         if ti.static(STARMAP_FLIP == 1):
             v = 1.0 - v
         col = sample_starmap(u, v) * STARMAP_GAIN
+        # 叠加整张程序化星空（_proc_sky：暗背景+程序带+亮星点）；想要纯图把 STARMAP_PROC_MIX 设 0
         col += STARMAP_PROC_MIX * _proc_sky(theta, phi)
     else:
         col = _proc_sky(theta, phi)

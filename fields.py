@@ -29,6 +29,8 @@ def build():
     if STARMAP_ON == 1:
         starmap_tex = ti.Vector.field(3, dtype=ti.f32, shape=(STARMAP_W, STARMAP_H))
     else:
+        # (1,1) 占位：Taichi 编译期会访问所有分支（含 ti.static 剪枝的），
+        # fields.starmap_tex 必须是合法 field 才能编译；OFF 时 sample_starmap 不会执行，不占显存。
         starmap_tex = ti.Vector.field(3, dtype=ti.f32, shape=(1, 1))
     pixels = ti.Vector.field(3, dtype=ti.f32, shape=(RES_X, RES_Y))
     samp_acc = ti.Vector.field(3, dtype=ti.f32, shape=(RES_X, RES_Y))
@@ -85,16 +87,17 @@ def load_organic_tex(path=None):
 def load_starmap_tex(path=None):
     """填充等距柱状星图，field 形状 (STARMAP_W 方位, STARMAP_H 极向)。
     注意：ti.tools.imread 返回 (W,H,C)，方位轴在 dim0、极向轴在 dim1，
-    与 field 轴序一致，故直接按轴索引、无需 transpose（区别于 organic 的正方形 loader）。"""
-    if path:
-        img = ti.tools.imread(path).astype(np.float32) / 255.0
-        if img.ndim == 2:
-            img = np.stack([img, img, img], axis=-1)
-        img = img[..., :3]
-        w_img, h_img = img.shape[0], img.shape[1]   # W=方位, H=极向
-        xi = (np.arange(STARMAP_W) * w_img // STARMAP_W) % w_img
-        yi = (np.arange(STARMAP_H) * h_img // STARMAP_H) % h_img
-        grid = np.ascontiguousarray(img[np.ix_(xi, yi)], dtype=np.float32)  # (STARMAP_W, STARMAP_H, 3)
-    else:
-        grid = np.zeros((STARMAP_W, STARMAP_H, 3), dtype=np.float32)
+    与 field 轴序一致，故直接按轴索引、无需 transpose（区别于 organic 的正方形 loader）。
+    注意 ti.tools.imread 还会沿 H 轴翻转（origin 在底部），故 v=0（北极/theta=0）
+    读到图像底行；若需让标准「北极在上」的等距柱状图正立，设 config.STARMAP_FLIP=1。"""
+    if not path:
+        return   # build() 已分配 (1,1) 占位；STARMAP_ON=0 时不应调用本函数
+    img = ti.tools.imread(path).astype(np.float32) / 255.0
+    if img.ndim == 2:
+        img = np.stack([img, img, img], axis=-1)
+    img = img[..., :3]
+    w_img, h_img = img.shape[0], img.shape[1]   # W=方位, H=极向
+    xi = (np.arange(STARMAP_W) * w_img // STARMAP_W) % w_img
+    yi = (np.arange(STARMAP_H) * h_img // STARMAP_H) % h_img
+    grid = np.ascontiguousarray(img[np.ix_(xi, yi)], dtype=np.float32)  # (STARMAP_W, STARMAP_H, 3)
     starmap_tex.from_numpy(grid)

@@ -110,8 +110,8 @@ STARMAP_PATH = _rel("assets/milkyway_eso0932a.jpg")  # None=回退纯程序化�
 STARMAP_RES = (4096, 2048)   # 星图采样分辨率（W,H，2:1）。显存=W*H*3*4 字节≈100MB
 STARMAP_GAIN = 1.0           # 底图亮度增益
 STARMAP_ROT = 0.0            # 方位旋转（绕极轴，单位"圈"，对准银河）
-STARMAP_FLIP = 0             # 1=上下翻转 v（朝向修正）
-STARMAP_PROC_MIX = 0.3       # 程序化近景亮星叠加权重（0=纯图）
+STARMAP_FLIP = 0             # 1=上下翻转 v（抵消 imread 的 H 轴翻转；标准「北极在上」图须设 1）
+STARMAP_PROC_MIX = 0.3       # 叠加程序化星空（含星点/暗背景/程序带）的权重；0=纯图。注：叠的是整张 _proc_sky 非仅亮星
 
 # ------------------------------------------------------------------ 动画（序列帧 → ffmpeg 合成）
 ANIMATE = True                     # True=出序列帧（覆盖单帧出图）；INTERACTIVE 优先级更高

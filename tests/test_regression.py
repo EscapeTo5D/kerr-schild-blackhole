@@ -74,6 +74,10 @@ def test_inner_layers_change_output():
 
 
 def test_starmap_changes_sky():
+    import pytest
+    from config import STARMAP_PATH
+    if not STARMAP_PATH or not os.path.exists(STARMAP_PATH):
+        pytest.skip("星图素材未找到，跳过")
     base = np.load(BASELINE)
     img = _probe_subprocess([])  # 子进程默认 STARMAP_PATH 指向素材 → 星空与程序化基线不同
     diff = np.abs(img - base)
