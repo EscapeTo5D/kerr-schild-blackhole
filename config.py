@@ -52,7 +52,7 @@ GUI_ZOOM_STEP = 1.1                  # Ctrl+滚轮每格的视角缩放倍率（
 SPIN = 0.6                          # 黑洞自旋 a/M
 CAM_DIST = 30.0                     # 相机半径
 CAMERA_THETA = 0.08                # 相机相对赤道面仰角（弧度）
-CAMERA_PHI = 0.0
+CAMERA_PHI = 0.6                   # 方位角：0.6 错开正面赤道处程序化噪声对齐成的直纹接缝（盘轴对称，改此不改构图）
 FOV_FACTOR = 1.4                   # 视野（越大越窄）
 TIME_OFFSET = 0.2                  # 噪声初始相位
 
@@ -128,6 +128,7 @@ CHROMA_AB_STRENGTH = 0.0     # 边缘色散强度（0=关）
 R_SKY = 60.0                       # 逃逸半径（KS 下偏折发生在近黑洞处，60 足够）
 
 # ---- C 图像底图星空 ----
+STARMAP_ENABLE = True        # 天空盒总开关：False=关图像底图，回退纯程序化星空（_proc_sky）。关时星图纹理不加载、不占显存
 STARMAP_PATH = _rel("assets/milkyway_eso0932a.jpg")  # None=回退纯程序化星空（回归安全）
 STARMAP_RES = (4096, 2048)   # 星图采样分辨率（W,H，2:1）。显存=W*H*3*4 字节≈100MB
 STARMAP_GAIN = 1.0           # 底图亮度增益
@@ -136,7 +137,7 @@ STARMAP_FLIP = 0             # 1=上下翻转 v（抵消 imread 的 H 轴翻转�
 STARMAP_PROC_MIX = 0.3       # 叠加程序化星空（含星点/暗背景/程序带）的权重；0=纯图。注：叠的是整张 _proc_sky 非仅亮星
 
 # ------------------------------------------------------------------ 动画（序列帧 → ffmpeg 合成）
-ANIMATE = False                     # True=出序列帧（覆盖单帧出图）；INTERACTIVE 优先级更高
+ANIMATE = True                     # True=出序列帧（覆盖单帧出图）；INTERACTIVE 优先级更高
 ANIM_FRAMES = 60                    # 总帧数（时长 = ANIM_FRAMES / ANIM_FPS = 60/12 = 5s）
 ANIM_FPS = 12                       # 合成帧率（60帧@12fps=5s；想更顺改 120帧@24fps，同样 5s）
 ANIM_CAM_TURNS = 0.0               # 相机绕黑洞转几圈（0=相机不动，只盘流动）
@@ -157,6 +158,6 @@ if INTERACTIVE:
 # A：离线才加额外 octave；GUI 实时档强制 0（编译期常量，被 ti.static 用）
 DISK_OCTAVE_BOOST_EFF = 0 if INTERACTIVE else DISK_OCTAVE_BOOST
 
-# C：星图是否启用（编译期常量，被 ti.static 用）+ 尺寸常量
-STARMAP_ON = 1 if STARMAP_PATH else 0
+# C：星图是否启用（编译期常量，被 ti.static 用）+ 尺寸常量。开关与路径同时满足才启用
+STARMAP_ON = 1 if (STARMAP_ENABLE and STARMAP_PATH) else 0
 STARMAP_W, STARMAP_H = STARMAP_RES

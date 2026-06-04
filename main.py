@@ -125,8 +125,8 @@ def main():
     fields.build()
     fields.load_noise_tex(NOISE_TEX_PATH or None)
     fields.load_organic_tex(ORGANIC_TEX_PATH or None)
-    from config import STARMAP_PATH
-    if STARMAP_PATH:
+    from config import STARMAP_ON, STARMAP_PATH
+    if STARMAP_ON == 1:                        # 开关+路径都满足才加载（关时 starmap_tex 是 (1,1) 占位，加载会崩）
         fields.load_starmap_tex(STARMAP_PATH)
     if INTERACTIVE:
         run_interactive()
