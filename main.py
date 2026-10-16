@@ -14,7 +14,7 @@ from config import (SPIN, RES_X, RES_Y, SAMPLES, CAMERA_PHI, CAMERA_THETA, TIME_
                     FOV_FACTOR, GUI_TIME_STEP, GUI_ZOOM_STEP,
                     CAMERA_ROLL, CAMERA_PAN_X, CAMERA_PAN_Y, CAM_DIST,
                     ANIMATE, ANIM_FRAMES, ANIM_FPS, ANIM_CAM_TURNS, ANIM_DISK_TURN, ANIM_OUT_DIR,
-                    ANIM_AUTO_MERGE, ANIM_VIDEO)
+                    ANIM_AUTO_MERGE, ANIM_VIDEO, ANIM_CRF)
 import fields
 from render import render_frame
 
@@ -36,7 +36,7 @@ def _merge_video():
     import subprocess
     pattern = os.path.join(ANIM_OUT_DIR, "frame_%04d.png")
     cmd = ["ffmpeg", "-y", "-framerate", str(ANIM_FPS), "-i", pattern,
-           "-c:v", "libx264", "-pix_fmt", "yuv420p", "-crf", "18", ANIM_VIDEO]
+           "-c:v", "libx264", "-pix_fmt", "yuv420p", "-crf", str(ANIM_CRF), ANIM_VIDEO]
     if shutil.which("ffmpeg") is None:
         print("未找到 ffmpeg（不在 PATH）。装好后手动执行：")
         print("  " + " ".join(f'"{a}"' if " " in a else a for a in cmd))

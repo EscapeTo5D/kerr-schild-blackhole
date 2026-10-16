@@ -25,7 +25,7 @@ vec4 = ti.types.vector(4, ti.f32)
 mat4 = ti.types.matrix(4, 4, ti.f32)
 
 # ============================ 运行配置（改这里，点 Run）============================
-RES_X, RES_Y = 3840, 2160            # 出图/视频分辨率（INTERACTIVE=False 时引擎用这个；4K，出 8K 大图改 8192,4320）
+RES_X, RES_Y = 7680, 4320            # 出图/视频分辨率（INTERACTIVE=False 时引擎用这个；8K UHD 16:9。4K 改回 3840,2160）
 OUT_PATH = _rel("interstellar_ks_4k.png")  # 输出文件名（写相对路径即锚定项目根）
 INTERACTIVE = False               # True=实时 GUI 窗口（调参用）；False=出静帧/视频
 NOISE_TEX_PATH = _rel("assets/rgba_noise_medium.png")   # iChannel0 噪声图，None=白噪声
@@ -53,12 +53,12 @@ SPIN = 0.6                          # 黑洞自旋 a/M
 CAM_DIST = 24.1                     # 相机半径（拉近出前景沉浸感；30=原版远景）
 CAMERA_THETA = 0.081               # 相机相对赤道面仰角（弧度）
 CAMERA_PHI = 0.47                  # 方位角（盘轴对称，改此不改构图，只转噪声相位/错开正面直纹接缝）
-FOV_FACTOR = 1.50                  # 视野（越大越窄）
-TIME_OFFSET = 0.2                  # 噪声初始相位
+FOV_FACTOR = 1.70                  # 视野（越大越窄）
+TIME_OFFSET = 0.4                  # 噪声初始相位
 # 电影构图（《星际》斜构图：黑洞右上、盘对角线）。全取 0 + CAM_DIST=30 = 原版居中正水平 edge-on：
 CAMERA_ROLL = -0.260               # 画面滚转（绕视线轴，弧度）：盘斜成对角线
 CAMERA_PAN_X = 0.160               # 主点水平偏移（屏幕单位 ux∈[-1,1]）：黑洞横向位置；>0 黑洞右移
-CAMERA_PAN_Y = 0.160               # 主点竖直偏移：黑洞纵向位置；>0 黑洞上移
+CAMERA_PAN_Y = 0.02               # 主点竖直偏移：黑洞纵向位置；>0 黑洞上移
 
 # ------------------------------------------------------------------ 吸积盘（Buffer A 体积盘）
 DISK_RIN = 3.83                    # 内缘
@@ -75,7 +75,7 @@ INNER_GLOW = 3.0                   # 内缘强自发光（bcol×150）增益（1
 WHITE_BASE_POW = 2.0               # 白热径向衰减幂：4.0=原版细环（回归安全）；越小越饱满白热（2.0=whitebright 式）
 WHITE_SIZE = 0.001                 # 白热外缘截断墙系数：0.0=原版无截断（回归安全）；>0 截住白光半径（越大越紧），与 BASE_POW 解耦控亮/控大
 # ---- B 光子环 / 内缘分层（默认关闭/原版）----
-PHOTONRING_ON = 1            # 0=关（回归安全）；1=叠加刀锋光子环
+PHOTONRING_ON = 0            # 0=关（回归安全）；1=叠加刀锋光子环
 PHOTONRING_STRENGTH = 1.0    # 光子环亮度
 PHOTONRING_WIDTH = 0.15      # 光子环径向宽度（高斯 sigma，单位 M）
 PHOTONRING_TINT = (1.0, 0.9, 0.75)   # 光子环色染
@@ -141,14 +141,15 @@ STARMAP_FLIP = 0             # 1=上下翻转 v（抵消 imread 的 H 轴翻转�
 STARMAP_PROC_MIX = 0.3       # 叠加程序化星空（含星点/暗背景/程序带）的权重；0=纯图。注：叠的是整张 _proc_sky 非仅亮星
 
 # ------------------------------------------------------------------ 动画（序列帧 → ffmpeg 合成）
-ANIMATE = False                     # True=出序列帧（覆盖单帧出图）；INTERACTIVE 优先级更高
-ANIM_FRAMES = 60                    # 总帧数（时长 = ANIM_FRAMES / ANIM_FPS = 60/12 = 5s）
-ANIM_FPS = 12                       # 合成帧率（60帧@12fps=5s；想更顺改 120帧@24fps，同样 5s）
+ANIMATE = True                      # True=出序列帧（覆盖单帧出图）；INTERACTIVE 优先级更高
+ANIM_FRAMES = 600                   # 总帧数（时长 = ANIM_FRAMES / ANIM_FPS = 600/60 = 10s）
+ANIM_FPS = 60                       # 合成帧率（600帧@60fps=10s 流畅）
 ANIM_CAM_TURNS = 0.0               # 相机绕黑洞转几圈（0=相机不动，只盘流动）
-ANIM_DISK_TURN = 30.0              # 盘流动总量 = t 的总推进；噪声相位总移 = 本值×TIME_SPEED(0.06)=1.8。流动速度 = 1.8/5s = 0.36/s（慢）
+ANIM_DISK_TURN = 16.0              # 盘流动总量 = t 的总推进；噪声相位总移 = 本值×TIME_SPEED(0.06)=0.96。流动速度 = 0.96/10s ≈ 0.10/s（慢转，约原 0.36 的 1/3.6）
 ANIM_OUT_DIR = _rel("frames_ks")   # 序列帧输出目录（锚定项目根）
 ANIM_AUTO_MERGE = True             # 跑完自动调 ffmpeg 合成 mp4（需系统装了 ffmpeg，否则回退为打印命令）
 ANIM_VIDEO = _rel("interstellar_ks.mp4")   # 合成视频输出路径
+ANIM_CRF = 14                      # H.264 质量（越小越清晰越大）：18=默认，14=高画质，12=接近视觉无损。注：源帧是 8bit PNG，色带须靠渲染端解决
 # 注意：动画务必降分辨率/采样，否则 8K×120 帧会跑到天荒地老。
 # 建议出动画时临时设 RES_X,RES_Y = 1920,1080 且 SAMPLES = 2~4。
 
